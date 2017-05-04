@@ -29,5 +29,13 @@
     </style>
     
     
+    <style name="main_plus_overflow_style" parent="@android:style/Widget.Holo.Light.ActionButton.Overflow">  
+    <item name="android:src">@drawable/actionbar_overflow</item>  
+</style>  
+    
+    
+    <style name="PlusOverflowHoloTheme" parent="@android:style/Theme.Holo.Light.DarkActionBar">
+    <item name="android:actionOverflowButtonStyle">@style/main_plus_overflow_style</item>
+</style>  
     
 </resources>

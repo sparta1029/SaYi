@@ -7,5 +7,7 @@
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
 	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.DEPENDENCIES"/>
 	<classpathentry exported="true" kind="lib" path="D:/GP/asmack-android-8-4.0.7.jar"/>
+	<classpathentry exported="true" kind="lib" path="D:/GP/android-support-v7-appcompat.jar"/>
+	<classpathentry exported="true" kind="lib" path="D:/GP/android-support-v4.jar"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

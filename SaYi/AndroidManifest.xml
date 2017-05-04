@@ -11,8 +11,7 @@
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
-        android:label="@string/app_name"
-        android:theme="@style/AppTheme" >
+        android:label="@string/app_name">
          <activity
             android:name=".activity.WelcomeActivity"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
@@ -26,11 +25,13 @@
             android:windowSoftInputMode="adjustPan"
             android:label="@string/app_name" 
             android:screenOrientation="portrait">
-      
         </activity>
+        
         <activity
-            android:name=".activity.MainActivity">
+            android:name=".activity.MainActivity"
+            android:theme="@style/PlusOverflowHoloTheme">
         </activity>
+        
        </application>
 
 </manifest>

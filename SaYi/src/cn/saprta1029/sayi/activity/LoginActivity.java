@@ -15,7 +15,9 @@ import android.content.IntentFilter;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -92,7 +94,6 @@ public class LoginActivity extends Activity {
 				 * 3.数据库中已存入相应账号，未存入密码，勾选“记住密码”，将密码更新到数据库
 				 * 4.数据库中已存入相应账号和密码，取消勾选“记住密码”，将密码更新为空
 				 */
-				Log.i("mytest", "ac"+account+"pw"+password);
 				if (password == null || "".equals(password)) {
 					password = etPassword.getText().toString().trim();
 				}
@@ -236,7 +237,6 @@ public class LoginActivity extends Activity {
 		public void onReceive(Context context, Intent intent) {
 			password = intent.getStringExtra("pwd");
 			account = intent.getStringExtra("account");
-			Log.i("mytest", "rec ac"+account+"pw"+password);
 			if (password == null || "".equals(password))
 				chkRememberPassword.setChecked(false);
 			else {
@@ -343,6 +343,38 @@ public class LoginActivity extends Activity {
 		return super.onOptionsItemSelected(item);
 	}
 
+	private static boolean isExit = false;
+	Handler mHandler = new Handler() {
+
+		@Override
+		public void handleMessage(Message msg) {
+			super.handleMessage(msg);
+			isExit = false;
+		}
+	};
+
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
+			exit();
+			return false;
+		}
+		return super.onKeyDown(keyCode, event);
+	}
+
+	private void exit() {
+		if (!isExit) {
+			isExit = true;
+			Toast.makeText(getApplicationContext(), "再按一次退出程序",
+					Toast.LENGTH_SHORT).show();
+			// 利用handler延迟发送更改状态信息
+			mHandler.sendEmptyMessageDelayed(0, 2000);
+		} else {
+			System.exit(0);
+		}
+	}
+	
+	
+	
 	protected void onDestroy() {
 		super.onDestroy();
 		this.unregisterReceiver(receiver);

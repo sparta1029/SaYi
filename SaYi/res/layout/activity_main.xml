@@ -1,7 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical" >
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" 
+    android:background="#32B4FF">
+
+    <LinearLayout
+        android:id="@+id/linearLayout1"
+        android:layout_width="fill_parent"
+        android:layout_height="30.0dip"
+        android:background="#32B4FF" >
+
+        <cn.sparta1029.sayi.components.TextViewWithImage
+            android:id="@+id/main_text_friend"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_weight="1.0"
+            android:gravity="center_vertical"
+            android:text="@string/friend"
+            android:textColor="#666666"
+            android:drawableStart="@drawable/main_friend_666666"
+            android:textSize="18.0dip" />
+
+        <cn.sparta1029.sayi.components.TextViewWithImage
+            android:id="@+id/main_text_chatroom"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_weight="1.0"
+            android:gravity="center_vertical"
+            android:text="@string/chatroom"
+            android:drawableStart="@drawable/main_chatroom_666666"
+            android:textColor="#666666"
+            android:textSize="18.0dip" />
+
+       
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/cursor"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:scaleType="matrix"
+        android:src="@drawable/horizon_scrollbar" />
+
+    <android.support.v4.view.ViewPager
+        android:id="@+id/vPager"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_weight="1.0"
+        android:background="#000000"
+        android:flipInterval="30"
+        android:persistentDrawingCache="animation" />
 
 </LinearLayout>
