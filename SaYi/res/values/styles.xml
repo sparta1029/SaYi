@@ -34,7 +34,7 @@
 </style>  
     
     
-    <style name="PlusOverflowHoloTheme" parent="@android:style/Theme.Holo.Light.DarkActionBar">
+    <style name="PlusOverflowHoloTheme" parent="@android:style/Theme.Holo">
     <item name="android:actionOverflowButtonStyle">@style/main_plus_overflow_style</item>
 </style>  
     

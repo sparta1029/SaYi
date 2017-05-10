@@ -1,15 +1,22 @@
 package cn.saprta1029.sayi.activity;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
 
+import org.apache.harmony.javax.security.sasl.SaslException;
+import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.packet.Registration;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.sqlite.SQLiteDatabase;
@@ -22,7 +29,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.Window;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -39,7 +45,9 @@ import cn.sparta1029.sayi.db.UserInfoDBManager;
 import cn.sparta1029.sayi.db.UserInfoDBOpenHelper;
 import cn.sparta1029.sayi.db.UserInfoEntity;
 import cn.sparta1029.sayi.utils.SPUtil;
-import cn.sparta1029.sayi.utils.XMPPConnectionUtil;
+import cn.sparta1029.sayi.xmpp.ConnectionData;
+import cn.sparta1029.sayi.xmpp.UserRegister;
+import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 
 public class LoginActivity extends Activity {
 	EditText etPassword;
@@ -94,14 +102,11 @@ public class LoginActivity extends Activity {
 				 * 3.数据库中已存入相应账号，未存入密码，勾选“记住密码”，将密码更新到数据库
 				 * 4.数据库中已存入相应账号和密码，取消勾选“记住密码”，将密码更新为空
 				 */
-				if (password == null || "".equals(password)) {
-					password = etPassword.getText().toString().trim();
-				}
+				password = etPassword.getText().toString().trim();
 				if (password == null || account == null || "".equals(password)
 						|| "".equals(account)) {
 					Toast.makeText(LoginActivity.this, "请输入正确的账号和密码",
 							Toast.LENGTH_SHORT).show();
-					;
 				} else 
 				{
 				TextView address = (TextView)findViewById(R.id.serverText);
@@ -114,7 +119,8 @@ public class LoginActivity extends Activity {
 				else{
 					final LoadingDialog dialog = new LoadingDialog(LoginActivity.this, "正在登录");
 					dialog.setCanceledOnTouchOutside(false);
-					dialog.show();
+					dialog.show();  
+						  
 					UserInfoDBOpenHelper DBHelper = new UserInfoDBOpenHelper(
 							LoginActivity.this, "sayi", null, 1);
 					SQLiteDatabase db = DBHelper.getWritableDatabase();
@@ -144,7 +150,8 @@ public class LoginActivity extends Activity {
 						}
 					}
 					{
-						// 登陆成功后，创建用户文件夹
+						// 进行登录，登陆成功后，创建用户文件夹
+						//TODO 需要完成服务器未打开 登录超时
 						new Thread(new Runnable() {
 							@Override
 							public void run() {
@@ -153,11 +160,9 @@ public class LoginActivity extends Activity {
 											LoginActivity.this);
 									SPUtil.putString(SPUtil.keyCurrentUser,
 											account);
-
-									File destDir = new File(LoginActivity.this
-											.getApplication().getFilesDir()
-											.getParentFile().getPath()
-											+ "/user/" + account + "/");
+									//TODO 写入图片
+									String userDire=LoginActivity.this.getApplication().getExternalFilesDir(null).getPath()+ "/user/" + account + "/";
+									File destDir = new File(userDire);
 									if (!destDir.exists()) {
 										destDir.mkdirs();
 									}
@@ -169,14 +174,25 @@ public class LoginActivity extends Activity {
 									finish();
 									dialog.dismiss();
 								}
+								else
+								{
+									dialog.dismiss();
+									Intent intent=new Intent(); 
+									intent.setAction("cn.sparta1029.sayi.pwdbroadcast");
+							        intent.putExtra("loginError", "登陆失败,检查密码账号是否正确");
+							        LoginActivity.this.sendBroadcast(intent);
+								}
 							}
 						}).start();
-					}
+					
 				}
 			}	
 			}
+			}
 		});
-
+		
+		
+		
 		final SPUtil SPUtil = new SPUtil(this);
 		account=SPUtil.getString(SPUtil.keyCurrentUser, "");
 		password=SPUtil.getString(SPUtil.keyCurrentPassword, "");
@@ -226,6 +242,24 @@ public class LoginActivity extends Activity {
 
 	}
 	
+	
+	private void errorDialog(String errorText){  
+		        AlertDialog.Builder builder=new AlertDialog.Builder(this);  //先得到构造器  
+		        builder.setTitle("提示"); //设置标题  
+		        builder.setMessage(errorText); //设置内容  
+		        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() { //设置确定按钮  
+		            @Override  
+		            public void onClick(DialogInterface dialog, int which) {  
+		                dialog.dismiss(); //关闭dialog   
+		            }  
+		        });  		   
+		        //参数都设置完成了，创建并显示出来  
+		        builder.create().show();  
+		    }  
+	
+	
+	
+	
 	/*
 	 * 接收有两种情况，1.点击DeletableAutoCompleteTextView的item触发广播，
 	 * 这时广播传送的intent中有pwd和account两项
@@ -235,14 +269,24 @@ public class LoginActivity extends Activity {
 	public class Receiver extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			
+
+			String loginText = intent.getStringExtra("loginError");
+			if(loginText!=null)
+			{
+				errorDialog(loginText);
+			}
+		else{
 			password = intent.getStringExtra("pwd");
 			account = intent.getStringExtra("account");
+			
 			if (password == null || "".equals(password))
 				chkRememberPassword.setChecked(false);
 			else {
 				chkRememberPassword.setChecked(true);
 				etPassword.setText(password);
 			}
+		}
 		}
 	}
 
@@ -258,29 +302,24 @@ public class LoginActivity extends Activity {
 		}
 		else 
 			{
-			if (XMPPConnectionUtil.ConnectServer(serverAddress) != null) {
-			try {
-				XMPPConnectionUtil.ConnectServer(serverAddress).login(account,
-						password);
-				return true;
-			} catch (Exception e) {
-				Log.e("myerror", "XMPPException:" + e.toString());
-				e.printStackTrace();
+			XMPPConnection connection = XMPPConnectionUtil.ConnectServer(serverAddress);
+			if (connection!= null) {
+				try {
+					XMPPConnectionUtil.ConnectServer(serverAddress).login(account,
+							password);
+					ConnectionData.setConnection(LoginActivity.this, connection);
+					return true;
+				} catch (Exception e) {
+					Log.e("logintest", "error     " + e.toString());
+					e.printStackTrace();
+				} 
 				return false;
-			}
 		} else {
 			dialog.dismiss();
-			final AlertDialog alert = new AlertDialog.Builder(
-					LoginActivity.this).create();
-			alert.setTitle("登陆失败：");
-			alert.setMessage("请检查网络以及用户名与密码是否正确");
-			alert.show();
-			new Handler().postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					alert.dismiss();
-				}
-			}, 1000);
+			Intent intent=new Intent(); 
+			intent.setAction("cn.sparta1029.sayi.pwdbroadcast");
+	        intent.putExtra("loginError", "连接服务器失败");
+	        LoginActivity.this.sendBroadcast(intent);
 			return false;
 		}
 			}
@@ -303,7 +342,8 @@ public class LoginActivity extends Activity {
 		setIconEnable(menu, true);
 		menu.add(0, 1, 0, " 设置地址").setIcon(R.drawable.login_setting);
 		menu.add(0, 2, 0, " 注册用户").setIcon(R.drawable.login_register);
-		menu.add(0, 3, 0, " 忘记密码").setIcon(R.drawable.login_forget_password);
+		//TODO 忘记密码
+	//	menu.add(0, 3, 0, " 忘记密码").setIcon(R.drawable.login_forget_password);
 		return super.onCreateOptionsMenu(menu);
 	}
 
@@ -334,7 +374,9 @@ public class LoginActivity extends Activity {
 			break;
 
 		case 2:
-			Toast.makeText(this, "注册", Toast.LENGTH_SHORT).show();
+			Intent intent=new Intent(LoginActivity.this,RegisterActivity.class);
+			finish();
+			startActivity(intent);
 			break;
 		case 3:
 			Toast.makeText(this, "忘记密码", Toast.LENGTH_SHORT).show();

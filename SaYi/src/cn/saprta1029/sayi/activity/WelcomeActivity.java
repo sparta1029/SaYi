@@ -1,9 +1,13 @@
 package cn.saprta1029.sayi.activity;
 
+import java.io.IOException;
+
+import org.jivesoftware.smack.XMPPException;
+
 import cn.saprta1029.sayi.R;
 import cn.sparta1029.sayi.components.LoadingDialog;
 import cn.sparta1029.sayi.utils.SPUtil;
-import cn.sparta1029.sayi.utils.XMPPConnectionUtil;
+import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -13,6 +17,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.Window;
+import android.widget.Toast;
 
 public class WelcomeActivity extends Activity{
 
@@ -49,6 +54,8 @@ public class WelcomeActivity extends Activity{
 	            switch (msg.what) {
 	                case GO_MAIN://去主页
 	                	 final LoadingDialog dialog = new LoadingDialog(WelcomeActivity.this, "正在登录");
+	                	 dialog.setCanceledOnTouchOutside(false);
+	                	 dialog.show();
 	                	new Thread(new Runnable() {
 	    					@Override
 	    					public void run() {
@@ -65,6 +72,7 @@ public class WelcomeActivity extends Activity{
 	    						}
 	    						else
 	    						{
+	    							//TODO 提醒无法连接到服务器
 	    							    Intent intent = new Intent(WelcomeActivity.this, LoginActivity.class);
 	    			                    startActivity(intent);
 	    			                    finish();
@@ -88,29 +96,16 @@ public class WelcomeActivity extends Activity{
 	        serverAddress = serverAddress.replaceAll("服务器地址:", "");
 			if (XMPPConnectionUtil.ConnectServer(serverAddress) != null) {
 				try {
-					Log.i("mytest", account);
-					Log.i("mytest", password);
 					XMPPConnectionUtil.ConnectServer(serverAddress).login(account,
 							password);
 					return true;
-				} catch (Exception e) {
-					Log.e("myerror", "XMPPException:" + e.toString());
+				}catch (XMPPException e) {
+					Log.i("test", "连接服务器失败  XMPPException：" + e.toString());
 					e.printStackTrace();
 					return false;
 				}
 			} else {
 				dialog.dismiss();
-				final AlertDialog alert = new AlertDialog.Builder(
-						this).create();
-				alert.setTitle("登陆失败：");
-				alert.setMessage("请检查网络以及用户名与密码是否正确");
-				alert.show();
-				new Handler().postDelayed(new Runnable() {
-					@Override
-					public void run() {
-						alert.dismiss();
-					}
-				}, 1000);
 				return false;
 			}
 		}
