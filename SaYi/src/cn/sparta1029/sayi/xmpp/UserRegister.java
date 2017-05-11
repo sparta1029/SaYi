@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.jivesoftware.smack.AccountManager;
 import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smackx.packet.VCard;
 
 import android.util.Log;
 
@@ -18,8 +19,10 @@ public static String registration(UserEntity UserEntity,XMPPConnection connectio
 	attributes.put("name", UserEntity.nickname);
 	attributes.put("email", UserEntity.email);
 	if (accountManager.supportsAccountCreation())
+	{
 		accountManager.createAccount(UserEntity.account,UserEntity.password,attributes);
-	else 
+	}
+		else 
 	Log.i("test","Server doesn't support creating new accounts");
 
 	}catch (Exception e) {

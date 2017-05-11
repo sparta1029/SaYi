@@ -45,7 +45,6 @@ import cn.sparta1029.sayi.db.UserInfoDBManager;
 import cn.sparta1029.sayi.db.UserInfoDBOpenHelper;
 import cn.sparta1029.sayi.db.UserInfoEntity;
 import cn.sparta1029.sayi.utils.SPUtil;
-import cn.sparta1029.sayi.xmpp.ConnectionData;
 import cn.sparta1029.sayi.xmpp.UserRegister;
 import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 
@@ -58,7 +57,7 @@ public class LoginActivity extends Activity {
 	private ArrayList<String> listAccount = new ArrayList<String>();
 	String account = null, password = null;
 	Receiver receiver = new Receiver();
-	
+	XMPPConnection connection;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -160,6 +159,7 @@ public class LoginActivity extends Activity {
 											LoginActivity.this);
 									SPUtil.putString(SPUtil.keyCurrentUser,
 											account);
+									SPUtil.putString(SPUtil.keyCurrentPassword,password);
 									//TODO 写入图片
 									String userDire=LoginActivity.this.getApplication().getExternalFilesDir(null).getPath()+ "/user/" + account + "/";
 									File destDir = new File(userDire);
@@ -170,9 +170,11 @@ public class LoginActivity extends Activity {
 											LoginActivity.this,
 											MainActivity.class);
 									intent.putExtra("currentUser", account);
+									connection.disconnect();
 									startActivity(intent);
 									finish();
 									dialog.dismiss();
+									
 								}
 								else
 								{
@@ -195,7 +197,7 @@ public class LoginActivity extends Activity {
 		
 		final SPUtil SPUtil = new SPUtil(this);
 		account=SPUtil.getString(SPUtil.keyCurrentUser, "");
-		password=SPUtil.getString(SPUtil.keyCurrentPassword, "");
+		password=SPUtil.getString(SPUtil.keySavedPassword, "");
 		if ("".equals(password))
 			chkRememberPassword.setChecked(false);
 		else
@@ -225,10 +227,10 @@ public class LoginActivity extends Activity {
 					public void onCheckedChanged(CompoundButton buttonView,
 							boolean isChecked) {
 						if (isChecked) {
-							SPUtil.putString(SPUtil.keyCurrentPassword,
+							SPUtil.putString(SPUtil.keySavedPassword,
 									etPassword.getText().toString().trim());
 						} else {
-							SPUtil.remove(SPUtil.keyCurrentPassword);
+							SPUtil.remove(SPUtil.keySavedPassword);
 						}
 					}
 				});
@@ -302,12 +304,11 @@ public class LoginActivity extends Activity {
 		}
 		else 
 			{
-			XMPPConnection connection = XMPPConnectionUtil.ConnectServer(serverAddress);
+			connection = XMPPConnectionUtil.ConnectServer(serverAddress);
 			if (connection!= null) {
 				try {
-					XMPPConnectionUtil.ConnectServer(serverAddress).login(account,
+					connection.login(account,
 							password);
-					ConnectionData.setConnection(LoginActivity.this, connection);
 					return true;
 				} catch (Exception e) {
 					Log.e("logintest", "error     " + e.toString());

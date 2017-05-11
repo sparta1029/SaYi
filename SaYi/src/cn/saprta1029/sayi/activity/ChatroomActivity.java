@@ -16,6 +16,7 @@ import android.widget.*;
 import java.util.*;
 
 import org.jivesoftware.smack.PacketListener;
+import org.jivesoftware.smack.Roster;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
@@ -23,6 +24,8 @@ import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smackx.muc.DiscussionHistory;
 import org.jivesoftware.smackx.muc.MultiUserChat;
+import org.jivesoftware.smackx.muc.RoomInfo;
+import org.jivesoftware.smackx.packet.VCard;
 
 import cn.saprta1029.sayi.R;
 import cn.sparta1029.sayi.utils.SPUtil;
@@ -80,6 +83,11 @@ public class ChatroomActivity extends Activity{
             		{
             			editText.setText("");
             		    multiUserChat.sendMessage(message);
+            		    //TODO
+//           		    String text=chatroomName+"@conference."+connect.getServiceName();
+//            		    RoomInfo ssss = MultiUserChat.getRoomInfo(connect, text);
+//            		    ssss.isPasswordProtected();//true false
+//            		    ssss.getOccupantsCount();//房间人数 返回int
             		}
 				} catch (XMPPException e) {
 					e.printStackTrace();
@@ -94,11 +102,14 @@ public class ChatroomActivity extends Activity{
 			connect=XMPPConnectionUtil.ConnectServer(serverAddress);
 			joinChatRoom(chatroomName,chatroomPassword);
 			}
-		}).start();        
+		}).start();       
+        
+
+        
     } 
     
     public boolean joinChatRoom(String roomName,String chatroomPassword) {  
-		loginServer();
+		   loginServer();
 		multiUserChat = new MultiUserChat(connect, roomName+"@conference."+connect.getServiceName());  
 		if(chatroomPassword==null||"".equals(chatroomPassword)){
 		    try {  
@@ -120,7 +131,6 @@ public class ChatroomActivity extends Activity{
 		    		                }   
 		    		            });
 		    	DiscussionHistory history=new DiscussionHistory();
-		    	//TODO 应用设置 最多历史记录
 				history.setMaxStanzas(ChatroomHistoryMAX);
 		    	multiUserChat.join(account,null, history,SmackConfiguration.getPacketReplyTimeout());
 		        return true;
@@ -149,7 +159,6 @@ public class ChatroomActivity extends Activity{
 				    		                	                });   }   
 			    		            });
 			    	DiscussionHistory history=new DiscussionHistory();
-			    	//TODO 应用设置 最多历史记录
 					history.setMaxStanzas(ChatroomHistoryMAX);
 					multiUserChat.join(account,chatroomPassword, history, SmackConfiguration.getPacketReplyTimeout());
 					return true;

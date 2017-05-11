@@ -1,5 +1,6 @@
 package cn.saprta1029.sayi.activity;
 
+import org.jivesoftware.smack.Connection;
 import org.jivesoftware.smack.XMPPConnection;
 
 import cn.saprta1029.sayi.R;
@@ -10,6 +11,7 @@ import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -24,7 +26,8 @@ public class RegisterActivity extends Activity{
      * Ìø×ªÅÐ¶Ï
      */
     
-    
+
+	XMPPConnection connect;
    
 
     @Override
@@ -39,6 +42,16 @@ public class RegisterActivity extends Activity{
         register=(Button)findViewById(R.id.register);
         register.setOnClickListener(registerClickListener);
         
+      
+        new Thread(new Runnable() {
+			@Override
+			public void run() {
+				SPUtil SPUtil=new SPUtil(RegisterActivity.this);
+		        connect = XMPPConnectionUtil.ConnectServer(
+						SPUtil.getString(SPUtil.keyAddress, ""));
+			}
+		}).start();
+       
     }
     
     OnClickListener registerClickListener = new OnClickListener(){  
@@ -64,6 +77,7 @@ public class RegisterActivity extends Activity{
 							XMPPConnection connection = XMPPConnectionUtil.ConnectServer(
 									SPUtil.getString(SPUtil.keyAddress, ""));
 							UserRegister.registration(UserEntity,connection);
+							loginServer();
 							Intent intent=new Intent(RegisterActivity.this,LoginActivity.class);
 							finish();
 							startActivity(intent);
@@ -76,4 +90,20 @@ public class RegisterActivity extends Activity{
     	    }  
     	};  
    
+    	private Boolean loginServer() {
+			try {
+				account=etAccount.getText().toString().trim();
+    			password=etPassword.getText().toString().trim();
+    			Log.i("logintest", account+"  //   "+password);
+				connect.login(account,password);
+				return true;
+			} catch (Exception e) {
+				Log.e("logintest", "error     " + e.toString());
+				e.printStackTrace();
+			} 
+			return false;
+}
+    	
+    	
+    	
 }

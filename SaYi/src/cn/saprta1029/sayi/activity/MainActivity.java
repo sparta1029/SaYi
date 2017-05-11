@@ -8,32 +8,21 @@ import java.util.List;
 import java.util.Map;
 
 import org.jivesoftware.smack.Chat;
-import org.jivesoftware.smack.ChatManagerListener;
-import org.jivesoftware.smack.MessageListener;
-import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.Roster;
-import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.packet.Message;
-import org.jivesoftware.smack.packet.Packet;
-import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smackx.Form;
 import org.jivesoftware.smackx.FormField;
-import org.jivesoftware.smackx.muc.DiscussionHistory;
 import org.jivesoftware.smackx.muc.MultiUserChat;
-
 import cn.saprta1029.sayi.R;
 import cn.sparta1029.sayi.components.DrawerListViewAdapter;
 import cn.sparta1029.sayi.components.TextViewWithImage;
 import cn.sparta1029.sayi.utils.SPUtil;
-import cn.sparta1029.sayi.xmpp.ConnectionData;
+import cn.sparta1029.sayi.xmpp.UsersSearch;
 import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -125,12 +114,13 @@ public class MainActivity extends Activity {
 		adapter = new DrawerListViewAdapter(itemListView,MainActivity.this);
 		lvDrawer.setAdapter(adapter);
 		lvDrawer.setOnItemClickListener(new lvDrawerItemClickListener());
-		serverAddress = SPUtil.getString(SPUtil.keyAddress, "");
 		
+		serverAddress = SPUtil.getString(SPUtil.keyAddress, "");
 		 new Thread(new Runnable() {
 				@Override
 				public void run() {	
 				connect=XMPPConnectionUtil.ConnectServer(serverAddress);
+				loginServer();
 				}
 			}).start();
 	}
@@ -154,17 +144,14 @@ public class MainActivity extends Activity {
 				SPUtil SPUtil = new SPUtil(MainActivity.this);
 				SPUtil.putString(SPUtil.keyAutoLogin, SPUtil.booleanAutoLoginFalse);
 				
-				
 				new Thread(new Runnable() {
 					@Override
-					public void run() {	
-						Presence presence = new Presence(Presence.Type.available);
-						XMPPConnection conn = ConnectionData.getConnection(MainActivity.this);
-						conn.disconnect(presence);
+					public void run() {
+						if(connect.isConnected())
+						connect.disconnect();
 					
 					}
 				}).start();
-				
 				finish();
 				startActivity(intent);
 				break;
@@ -189,7 +176,6 @@ public class MainActivity extends Activity {
 //					}
 //				}).start();
 //				
-//				finish();
 //				startActivity(intent);
 				break;
 			case 3:
@@ -286,6 +272,10 @@ public class MainActivity extends Activity {
 			return mListViews.size();
 		}
 
+		
+		
+		
+		
 		@Override
 		public Object instantiateItem(View arg0, int arg1) {
 			((ViewPager) arg0).addView(mListViews.get(arg1), 0);
@@ -293,18 +283,34 @@ public class MainActivity extends Activity {
 			if(arg1==0)
 			{
 				 Button btnConfirm= (Button) mListViews.get(arg1).findViewById(R.id.friend_chat);
-				 final EditText etOtherAccount= (EditText) mListViews.get(arg1).findViewById(R.id.friend_account);
+				 final EditText etFriendAccount= (EditText) mListViews.get(arg1).findViewById(R.id.friend_account);
 				 btnConfirm.setOnClickListener(new View.OnClickListener() {
 				     @Override
 				     public void onClick(View view) {
-				    	 if(etOtherAccount.getText()==null||"".equals(etOtherAccount.getText().toString()))
-				    	 Toast.makeText(MainActivity.this, "请输入聊天对象用户名", Toast.LENGTH_SHORT).show();
-				    	 else{
-				    	 Intent intent = new Intent(MainActivity.this, ChatActivity.class);
-				    	 intent.putExtra("otherAccount", etOtherAccount.getText().toString());
-							finish();
-							startActivity(intent);
-				    	 }
+				    	 //TODO
+//				    	 if(etFriendAccount.getText()==null||"".equals(etFriendAccount.getText().toString()))
+//				    	 Toast.makeText(MainActivity.this, "请输入聊天对象用户名", Toast.LENGTH_SHORT).show();
+//				    	 else{
+//				    	 Intent intent = new Intent(MainActivity.this, ChatActivity.class);
+//				    	 intent.putExtra("otherAccount", etFriendAccount.getText().toString());
+//							startActivity(intent);
+//				    	 }
+				    	 //TODO 查找用户线程
+						new Thread(new Runnable() {
+							@Override
+							public void run() {
+								try {
+									UsersSearch.searchUsers(serverAddress,
+											account, password, "hza");
+
+								} catch (XMPPException e) {
+									e.printStackTrace();
+								}
+							}
+						}).start();
+				    	 
+				    	 
+				    	 
 				     }
 				 });
 			}
@@ -385,13 +391,11 @@ public class MainActivity extends Activity {
 				    	 intent.putExtra("chatroom",etChatroomName.getText().toString().trim());
 				    	 if(etChatroomPassword==null||"".equals(etChatroomPassword))
 				    	 {
-							finish();
 							startActivity(intent);
 				    	 }
 				    	 else
 				    	 { 
 				    		 intent.putExtra("password",etChatroomName.getText().toString().trim());
-				    		 finish();
 				    		 startActivity(intent);
 				    		 }
 						    	
@@ -534,8 +538,6 @@ public class MainActivity extends Activity {
 	
 	private Boolean loginServer() {
 				try {
-					Log.i("maintest", "ac :"+account);
-					Log.i("maintest", "pw :"+password);
 					connect.login(account,password);
 					return true;
 				} catch (Exception e) {

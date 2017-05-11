@@ -11,6 +11,7 @@ public class SPUtil {
     public String keyAddress="server_address"; 
     public String keyCurrentUser="current_user"; 
     public String keyCurrentPassword="current_password"; 
+    public String keySavedPassword="saved_password"; 
     public String keyAutoLogin="auto_login_state"; 
     public String booleanAutoLoginTrue="true"; 
     public String booleanAutoLoginFalse="false"; 
