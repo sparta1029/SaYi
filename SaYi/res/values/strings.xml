@@ -5,6 +5,8 @@
     <string name="action_plus">plus</string>
     <string name="account_hint">用户名</string>
     <string name="password_hint">密码</string>
+    <string name="password_hint_new">输入新的密码</string>
+    <string name="password_hint_old">输入当前密码</string>
     <string name="password_hint_again">再依次输入密码</string>
     <string name="email_hint">电子邮箱</string>
     <string name="nickname_hint">昵称</string>
@@ -19,7 +21,9 @@
     <string name="chatroom">  聊天室</string>
     <string name="chatroom_name_hint">  聊天室名称</string>
     <string name="chatroom_create_text">创建聊天室</string>
-    <string name="chatroom_enter_text">进入聊天室</string>
+    <string name="chatroom_enter_text">进入聊天室</string>    
+    <string name="password_edit_text">修改密码</string>   
+    <string name="blacklist_text">黑名单</string>
     <string name="colon">  :  </string>
     <drawable name="main_actionbar_color">#32B4FF</drawable>
 </resources>

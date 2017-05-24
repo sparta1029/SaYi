@@ -15,6 +15,7 @@ public class SPUtil {
     public String keyAutoLogin="auto_login_state"; 
     public String booleanAutoLoginTrue="true"; 
     public String booleanAutoLoginFalse="false"; 
+    public String keyChatroomHistoryMAX="ChatroomHistoryMAX";
     @SuppressLint("CommitPrefEdits")
 	public SPUtil(Context context) {  
         preferences = context.getSharedPreferences(fileName, Context.MODE_PRIVATE);  

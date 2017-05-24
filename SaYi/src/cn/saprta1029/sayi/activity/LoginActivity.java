@@ -2,15 +2,29 @@ package cn.saprta1029.sayi.activity;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.AddressException;
 
 import org.apache.harmony.javax.security.sasl.SaslException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Registration;
+import org.jivesoftware.smack.provider.ProviderManager;
+import org.jivesoftware.smackx.OfflineMessageManager;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -41,9 +55,15 @@ import cn.sparta1029.sayi.components.DeletableAutoCompleteTextView;
 import cn.sparta1029.sayi.components.DeletableAutoCompleteTextViewAdapter;
 import cn.sparta1029.sayi.components.LoadingDialog;
 import cn.sparta1029.sayi.components.ServerAddressDialog;
+import cn.sparta1029.sayi.db.BlacklistDBManger;
+import cn.sparta1029.sayi.db.BlacklistDBOpenHelper;
+import cn.sparta1029.sayi.db.MessageDBManager;
+import cn.sparta1029.sayi.db.MessageDBOpenHelper;
+import cn.sparta1029.sayi.db.MessageEntity;
 import cn.sparta1029.sayi.db.UserInfoDBManager;
 import cn.sparta1029.sayi.db.UserInfoDBOpenHelper;
 import cn.sparta1029.sayi.db.UserInfoEntity;
+import cn.sparta1029.sayi.utils.EmailUtil;
 import cn.sparta1029.sayi.utils.SPUtil;
 import cn.sparta1029.sayi.xmpp.UserRegister;
 import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
@@ -58,11 +78,31 @@ public class LoginActivity extends Activity {
 	String account = null, password = null;
 	Receiver receiver = new Receiver();
 	XMPPConnection connection;
+	int error = 0;
+
+	private static final int TIME_OUT = 0;
+	private static final int SUCCESS = 1;
+	private static final int TIME_LIMIT = 15000; // 登陆超时时间 15秒
+	Timer timer;
+	Thread thread;
+	String defaultChatroomHistoryMAX = "5";
+	LoadingDialog dialog;
+	String addressText = "服务器地址     ";
+	ArrayList<String> blacklistAccountList;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_login);
+		// TODO
+	//	sendMail("sparta1029@outlook.com", "订单", "邮件由系统自动发送，请不要回复！");
+		BlacklistDBOpenHelper BlacklistDBHelper = new BlacklistDBOpenHelper(
+				LoginActivity.this, "sayi", null, 1);
+		SQLiteDatabase dbBlacklist = BlacklistDBHelper.getWritableDatabase();
+		BlacklistDBManger blacklistDBManager = new BlacklistDBManger();
+		blacklistAccountList = blacklistDBManager
+				.blacklistAllAccountQuery(dbBlacklist);
+		dbBlacklist.close();
 
 		IntentFilter filter = new IntentFilter();
 		filter.addAction("cn.sparta1029.sayi.pwdbroadcast");
@@ -82,6 +122,7 @@ public class LoginActivity extends Activity {
 		Hashtable<String, String> tempListAccount = userInfoManager
 				.userInfoQueryAll(db);
 		Enumeration<String> keys = tempListAccount.keys();
+		db.close();
 		while (keys.hasMoreElements()) {
 			listAccount.add(keys.nextElement());
 		}
@@ -93,6 +134,7 @@ public class LoginActivity extends Activity {
 		dactvAccount.setAdapter(dactvApter);
 
 		btnLogin.setOnClickListener(new OnClickListener() {
+			@Override
 			public void onClick(View v) {
 				/*
 				 * 账号密码的输入判断完成，根据以下情况操作后,根据输入的账号密码进行服务器的登录,登陆成功，跳转到主界面，创建用户文件夹
@@ -101,103 +143,121 @@ public class LoginActivity extends Activity {
 				 * 3.数据库中已存入相应账号，未存入密码，勾选“记住密码”，将密码更新到数据库
 				 * 4.数据库中已存入相应账号和密码，取消勾选“记住密码”，将密码更新为空
 				 */
+
+				timer = new Timer();
+
 				password = etPassword.getText().toString().trim();
 				if (password == null || account == null || "".equals(password)
 						|| "".equals(account)) {
 					Toast.makeText(LoginActivity.this, "请输入正确的账号和密码",
 							Toast.LENGTH_SHORT).show();
-				} else 
-				{
-				TextView address = (TextView)findViewById(R.id.serverText);
-				String serverAddress = address.getText().toString().trim();
-				serverAddress = serverAddress.replaceAll("服务器地址:", "");
-				if("".equals(serverAddress))
-				{
-					Toast.makeText(LoginActivity.this, "请输入服务器地址", Toast.LENGTH_LONG).show();
-				}
-				else{
-					final LoadingDialog dialog = new LoadingDialog(LoginActivity.this, "正在登录");
-					dialog.setCanceledOnTouchOutside(false);
-					dialog.show();  
-						  
-					UserInfoDBOpenHelper DBHelper = new UserInfoDBOpenHelper(
-							LoginActivity.this, "sayi", null, 1);
-					SQLiteDatabase db = DBHelper.getWritableDatabase();
-					UserInfoDBManager userInfoManager = new UserInfoDBManager();
-
-					if (userInfoManager.userInfoAccountQuery(db, account) == null)// 未存入用户名
-					{
-						if (chkRememberPassword.isSelected()) {
-							UserInfoEntity userInfo = new UserInfoEntity(
-									account, password);
-							userInfoManager.userInfoInsert(db, userInfo);
-						} else {
-							UserInfoEntity userInfo = new UserInfoEntity(
-									account, "");
-							userInfoManager.userInfoInsert(db, userInfo);
-						}
+				} else {
+					TextView address = (TextView) findViewById(R.id.serverText);
+					String serverAddress = address.getText().toString().trim();
+					serverAddress = serverAddress.replaceAll("服务器地址     ", "");
+					if ("".equals(serverAddress)) {
+						Toast.makeText(LoginActivity.this, "请输入服务器地址",
+								Toast.LENGTH_LONG).show();
 					} else {
-						if (chkRememberPassword.isSelected()) {
-							UserInfoEntity userInfo = new UserInfoEntity(
-									account, password);
-							userInfoManager.userInfoUpdate(db, userInfo);
-							;
+						dialog = new LoadingDialog(LoginActivity.this, "正在登录");
+						dialog.setCanceledOnTouchOutside(false);
+						dialog.show();
+
+						UserInfoDBOpenHelper DBHelper = new UserInfoDBOpenHelper(
+								LoginActivity.this, "sayi", null, 1);
+						SQLiteDatabase db = DBHelper.getWritableDatabase();
+						UserInfoDBManager userInfoManager = new UserInfoDBManager();
+
+						if (userInfoManager.userInfoAccountQuery(db, account) == null)// 未存入用户名
+						{
+							if (chkRememberPassword.isSelected()) {
+								UserInfoEntity userInfo = new UserInfoEntity(
+										account, password);
+								userInfoManager.userInfoInsert(db, userInfo);
+							} else {
+								UserInfoEntity userInfo = new UserInfoEntity(
+										account, "");
+								userInfoManager.userInfoInsert(db, userInfo);
+							}
 						} else {
-							UserInfoEntity userInfo = new UserInfoEntity(
-									account, "");
-							userInfoManager.userInfoUpdate(db, userInfo);
+							if (chkRememberPassword.isSelected()) {
+								UserInfoEntity userInfo = new UserInfoEntity(
+										account, password);
+								userInfoManager.userInfoUpdate(db, userInfo);
+								;
+							} else {
+								UserInfoEntity userInfo = new UserInfoEntity(
+										account, "");
+								userInfoManager.userInfoUpdate(db, userInfo);
+							}
+						}
+						{
+							// 进行登录，登陆成功后，创建用户文件夹
+							thread = new Thread(new Runnable() {
+								@Override
+								public void run() {
+									if (loginServer(dialog)) {
+										SPUtil SPUtil = new SPUtil(
+												LoginActivity.this);
+										SPUtil.putString(SPUtil.keyCurrentUser,
+												account);
+										SPUtil.putString(
+												SPUtil.keyCurrentPassword,
+												password);
+										// TODO 写入图片
+//										String userDire = LoginActivity.this
+//												.getApplication()
+//												.getExternalFilesDir(null)
+//												.getPath()
+//												+ "/user/" + account + "/";
+//										File destDir = new File(userDire);
+//										if (!destDir.exists()) {
+//											destDir.mkdirs();
+//										}
+										Intent intent = new Intent(
+												LoginActivity.this,
+												MainActivity.class);
+										intent.putExtra("currentUser", account);
+										startActivity(intent);
+										timer.cancel();
+										finish();
+										dialog.dismiss();
+
+									} else {
+										timer.cancel();
+										dialog.dismiss();
+										if (error == 0) {
+											Intent intent = new Intent();
+											intent.setAction("cn.sparta1029.sayi.pwdbroadcast");
+											intent.putExtra("loginError",
+													"登陆失败,检查密码账号是否正确");
+											LoginActivity.this
+													.sendBroadcast(intent);
+										} else
+											error = 0;
+									}
+								}
+							});
+							thread.start();
+							// 设定定时器
+							timer.schedule(new TimerTask() {
+								@Override
+								public void run() {
+									sendTimeOutMsg();
+								}
+							}, TIME_LIMIT);
 						}
 					}
-					{
-						// 进行登录，登陆成功后，创建用户文件夹
-						//TODO 需要完成服务器未打开 登录超时
-						new Thread(new Runnable() {
-							@Override
-							public void run() {
-								if (loginServer(dialog)) {
-									SPUtil SPUtil = new SPUtil(
-											LoginActivity.this);
-									SPUtil.putString(SPUtil.keyCurrentUser,
-											account);
-									SPUtil.putString(SPUtil.keyCurrentPassword,password);
-									//TODO 写入图片
-									String userDire=LoginActivity.this.getApplication().getExternalFilesDir(null).getPath()+ "/user/" + account + "/";
-									File destDir = new File(userDire);
-									if (!destDir.exists()) {
-										destDir.mkdirs();
-									}
-									Intent intent = new Intent(
-											LoginActivity.this,
-											MainActivity.class);
-									intent.putExtra("currentUser", account);
-									connection.disconnect();
-									startActivity(intent);
-									finish();
-									dialog.dismiss();
-									
-								}
-								else
-								{
-									dialog.dismiss();
-									Intent intent=new Intent(); 
-									intent.setAction("cn.sparta1029.sayi.pwdbroadcast");
-							        intent.putExtra("loginError", "登陆失败,检查密码账号是否正确");
-							        LoginActivity.this.sendBroadcast(intent);
-								}
-							}
-						}).start();
-					
 				}
-			}	
-			}
 			}
 		});
-		
-		
-		
+
 		final SPUtil SPUtil = new SPUtil(this);
-		account=SPUtil.getString(SPUtil.keyCurrentUser, "");
-		password=SPUtil.getString(SPUtil.keySavedPassword, "");
+		if ("".equals(SPUtil.getString(SPUtil.keyChatroomHistoryMAX, "")))// 如果未设置，使用默认5条
+			SPUtil.putString(SPUtil.keyChatroomHistoryMAX,
+					defaultChatroomHistoryMAX);
+		account = SPUtil.getString(SPUtil.keyCurrentUser, "");
+		password = SPUtil.getString(SPUtil.keySavedPassword, "");
 		if ("".equals(password))
 			chkRememberPassword.setChecked(false);
 		else
@@ -238,30 +298,54 @@ public class LoginActivity extends Activity {
 		// create时从sharedpreferences中获取当前用户和密码信息，用当前用户信息更新界面，再获取自动登录信息，若为true，直接进行登陆
 		TextView tvServerText = (TextView) LoginActivity.this
 				.findViewById(R.id.serverText);
-		tvServerText.setText("服务器地址: "
+		tvServerText.setText(addressText
 				+ SPUtil.getString(SPUtil.keyAddress, ""));
 		etPassword.setText(password);
 
 	}
-	
-	
-	private void errorDialog(String errorText){  
-		        AlertDialog.Builder builder=new AlertDialog.Builder(this);  //先得到构造器  
-		        builder.setTitle("提示"); //设置标题  
-		        builder.setMessage(errorText); //设置内容  
-		        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() { //设置确定按钮  
-		            @Override  
-		            public void onClick(DialogInterface dialog, int which) {  
-		                dialog.dismiss(); //关闭dialog   
-		            }  
-		        });  		   
-		        //参数都设置完成了，创建并显示出来  
-		        builder.create().show();  
-		    }  
-	
-	
-	
-	
+
+	final Handler myHandler = new Handler() {
+		@Override
+		public void handleMessage(android.os.Message msg) {
+			switch (msg.what) {
+			case TIME_OUT:
+				// 打断线程
+				thread.interrupt();
+				dialog.dismiss();
+				Toast.makeText(LoginActivity.this, "登录超时，请稍后重试",
+						Toast.LENGTH_LONG).show();
+				break;
+			case SUCCESS:
+				// 取消定时器
+				timer.cancel();
+				break;
+			default:
+				break;
+			}
+		};
+	};
+
+	// 向handler发送超时信息
+	private void sendTimeOutMsg() {
+		Message timeOutMsg = new Message();
+		timeOutMsg.what = TIME_OUT;
+		myHandler.sendMessage(timeOutMsg);
+	}
+
+	private void errorDialog(String errorText) {
+		AlertDialog.Builder builder = new AlertDialog.Builder(this); // 先得到构造器
+		builder.setTitle("提示"); // 设置标题
+		builder.setMessage(errorText); // 设置内容
+		builder.setPositiveButton("确定", new DialogInterface.OnClickListener() { // 设置确定按钮
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.dismiss(); // 关闭dialog
+					}
+				});
+		// 参数都设置完成了，创建并显示出来
+		builder.create().show();
+	}
+
 	/*
 	 * 接收有两种情况，1.点击DeletableAutoCompleteTextView的item触发广播，
 	 * 这时广播传送的intent中有pwd和account两项
@@ -271,59 +355,90 @@ public class LoginActivity extends Activity {
 	public class Receiver extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			
 
 			String loginText = intent.getStringExtra("loginError");
-			if(loginText!=null)
-			{
+			if (loginText != null) {
 				errorDialog(loginText);
+			} else {
+				password = intent.getStringExtra("pwd");
+				account = intent.getStringExtra("account");
+
+				if (password == null || "".equals(password))
+					chkRememberPassword.setChecked(false);
+				else {
+					chkRememberPassword.setChecked(true);
+					etPassword.setText(password);
+				}
 			}
-		else{
-			password = intent.getStringExtra("pwd");
-			account = intent.getStringExtra("account");
-			
-			if (password == null || "".equals(password))
-				chkRememberPassword.setChecked(false);
-			else {
-				chkRememberPassword.setChecked(true);
-				etPassword.setText(password);
-			}
-		}
 		}
 	}
 
 	// 登陆失败（密码不匹配或连接错误）返回false，登陆成功返回true
 	private Boolean loginServer(LoadingDialog dialog) {
 		TextView address = (TextView) findViewById(R.id.serverText);
-		String serverAddress = address.getText().toString().trim();
-		serverAddress = serverAddress.replaceAll("服务器地址:", "");
-		if("".equals(serverAddress))
-		{
-			Toast.makeText(LoginActivity.this, "请输入服务器地址", Toast.LENGTH_LONG).show();
+		String serverAddressText = address.getText().toString()
+				.replaceAll(addressText, "").trim();
+		if ("".equals(serverAddressText)) {
+			Toast.makeText(LoginActivity.this, "请输入服务器地址", Toast.LENGTH_LONG)
+					.show();
 			return false;
-		}
-		else 
-			{
-			connection = XMPPConnectionUtil.ConnectServer(serverAddress);
-			if (connection!= null) {
+		} else {
+			// 创建连接，状态未上线
+			XMPPConnectionUtil.configure(ProviderManager.getInstance());
+			connection = XMPPConnectionUtil.getInstanceNotPresence()
+					.getConnection(serverAddressText);
+			if (connection != null) {
 				try {
-					connection.login(account,
-							password);
+					connection.connect();
+					connection.login(account, password);
+					// 离线消息获取
+					OfflineMessageManager offlineManager = new OfflineMessageManager(
+							connection);
+					// Log.i("offlinetestv ",
+					// "离线消息数量:" + offlineManager.getMessageCount());
+					Iterator<org.jivesoftware.smack.packet.Message> it = offlineManager
+							.getMessages();
+
+					MessageDBOpenHelper DBHelper = new MessageDBOpenHelper(
+							LoginActivity.this, "sayi", null, 1);
+					SQLiteDatabase db = DBHelper.getWritableDatabase();
+					MessageDBManager MessageDBManager = new MessageDBManager();
+
+					while (it.hasNext()) {
+						org.jivesoftware.smack.packet.Message message = it
+								.next();
+						String sender = message.getFrom().split("@")[0];
+						sender = sender.substring(sender.indexOf("/") + 1);
+						if (!blacklistAccountList.contains(sender)) {
+							MessageEntity messageEntity = new MessageEntity(
+									account, sender, message.getBody(),
+									"unreaded");
+							MessageDBManager.messageInsert(db, messageEntity);
+						}
+					}
+					// 删除离线消息
+					offlineManager.deleteMessages();
+					// 将状态设置成在线
+					Presence presence = new Presence(Presence.Type.available);
+					connection.sendPacket(presence);
+
 					return true;
 				} catch (Exception e) {
 					Log.e("logintest", "error     " + e.toString());
 					e.printStackTrace();
-				} 
+				}
 				return false;
-		} else {
-			dialog.dismiss();
-			Intent intent=new Intent(); 
-			intent.setAction("cn.sparta1029.sayi.pwdbroadcast");
-	        intent.putExtra("loginError", "连接服务器失败");
-	        LoginActivity.this.sendBroadcast(intent);
-			return false;
-		}
+			} else {
+				dialog.dismiss();
+				timer.cancel();
+				Intent intent = new Intent();
+				intent.setAction("cn.sparta1029.sayi.pwdbroadcast");
+				intent.putExtra("loginError", "连接服务器失败");
+				error = 1;
+				LoginActivity.this.sendBroadcast(intent);
+				return false;
 			}
+		}
 	}
 
 	private void setIconEnable(Menu menu, boolean enable) {
@@ -339,15 +454,17 @@ public class LoginActivity extends Activity {
 		}
 	}
 
+	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		setIconEnable(menu, true);
 		menu.add(0, 1, 0, " 设置地址").setIcon(R.drawable.login_setting);
 		menu.add(0, 2, 0, " 注册用户").setIcon(R.drawable.login_register);
-		//TODO 忘记密码
-	//	menu.add(0, 3, 0, " 忘记密码").setIcon(R.drawable.login_forget_password);
+		// TODO 忘记密码
+		// menu.add(0, 3, 0, " 忘记密码").setIcon(R.drawable.login_forget_password);
 		return super.onCreateOptionsMenu(menu);
 	}
 
+	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case 1:
@@ -366,7 +483,7 @@ public class LoginActivity extends Activity {
 										serverAddress);
 								TextView tvServerText = (TextView) LoginActivity.this
 										.findViewById(R.id.serverText);
-								tvServerText.setText("服务器地址：   "
+								tvServerText.setText(addressText
 										+ serverAddress);
 							}
 						}
@@ -375,9 +492,16 @@ public class LoginActivity extends Activity {
 			break;
 
 		case 2:
-			Intent intent=new Intent(LoginActivity.this,RegisterActivity.class);
-			finish();
-			startActivity(intent);
+			SPUtil SPUtil = new SPUtil(LoginActivity.this);
+			String serverAddress = SPUtil.getString(SPUtil.keyAddress, "");
+			if ("".equals(serverAddress)) {
+				Toast.makeText(this, "请设置地址", Toast.LENGTH_SHORT).show();
+			} else {
+				Intent intent = new Intent(LoginActivity.this,
+						RegisterActivity.class);
+				finish();
+				startActivity(intent);
+			}
 			break;
 		case 3:
 			Toast.makeText(this, "忘记密码", Toast.LENGTH_SHORT).show();
@@ -396,6 +520,7 @@ public class LoginActivity extends Activity {
 		}
 	};
 
+	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if (keyCode == KeyEvent.KEYCODE_BACK) {
 			exit();
@@ -415,9 +540,27 @@ public class LoginActivity extends Activity {
 			System.exit(0);
 		}
 	}
-	
-	
-	
+
+	// TODO
+
+//	public void sendMail(final String toMail, final String title,
+//			final String body){
+//		new Thread(new Runnable() {
+//			@Override
+//			public void run() {
+//				EmailUtil mail = new EmailUtil();
+//				try {
+//					mail.sendMail();;
+//				} catch (AddressException e) {
+//					e.printStackTrace();
+//				} catch (MessagingException e) {
+//					e.printStackTrace();
+//				}
+//
+//		}).start();
+//	}
+
+	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		this.unregisterReceiver(receiver);

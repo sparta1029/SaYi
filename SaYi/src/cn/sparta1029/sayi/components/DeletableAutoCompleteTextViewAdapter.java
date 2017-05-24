@@ -10,19 +10,15 @@ import java.util.List;
 
 
 import cn.saprta1029.sayi.R;
-import cn.saprta1029.sayi.activity.LoginActivity;
 import cn.sparta1029.sayi.db.UserInfoDBManager;
 import cn.sparta1029.sayi.db.UserInfoDBOpenHelper;
 import android.content.Context;  
 import android.database.sqlite.SQLiteDatabase;
-import android.util.Log;  
 import android.view.LayoutInflater;  
 import android.view.View;  
 import android.view.ViewGroup;  
 import android.view.View.OnClickListener;  
-import android.widget.AutoCompleteTextView;
 import android.widget.BaseAdapter;  
-import android.widget.EditText;
 import android.widget.Filter;  
 import android.widget.Filterable;  
 import android.widget.ImageView;  

@@ -1,10 +1,10 @@
 package cn.sparta1029.sayi.components;
 
 import cn.saprta1029.sayi.R;
-import cn.saprta1029.sayi.activity.LoginActivity;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -36,5 +36,17 @@ public class LoadingDialog extends Dialog {
 		LinearLayout linearLayout = (LinearLayout) this
 				.findViewById(R.id.LoadingDialogLinearLayout);
 		linearLayout.getBackground().setAlpha(200);
+		
 	}
+	
+	
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
+			return true;
+		}
+		return true; 
+	}
+	
+	
 }

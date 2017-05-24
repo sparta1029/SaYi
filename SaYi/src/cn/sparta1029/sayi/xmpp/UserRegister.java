@@ -5,13 +5,11 @@ import java.util.Map;
 
 import org.jivesoftware.smack.AccountManager;
 import org.jivesoftware.smack.XMPPConnection;
-import org.jivesoftware.smackx.packet.VCard;
-
 import android.util.Log;
 
 public class UserRegister {
 
-public static String registration(UserEntity UserEntity,XMPPConnection connection)
+public static boolean registration(UserEntity UserEntity,XMPPConnection connection)
 {
 	try {
 	AccountManager accountManager=new AccountManager(connection);
@@ -26,11 +24,11 @@ public static String registration(UserEntity UserEntity,XMPPConnection connectio
 	Log.i("test","Server doesn't support creating new accounts");
 
 	}catch (Exception e) {
+		//用户已存在 提示 conflict 409
 		Log.i("regtest", e.toString());
 		e.printStackTrace();
-		return "注册失败";
+		return false;
 	}
-	
-	return "注册成功";
+	return true;
 }
 }

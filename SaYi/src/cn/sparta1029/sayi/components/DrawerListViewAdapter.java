@@ -1,19 +1,15 @@
 package cn.sparta1029.sayi.components;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import cn.saprta1029.sayi.R;
-import cn.sparta1029.sayi.components.DeletableAutoCompleteTextViewAdapter.ViewHolder;
 import android.content.Context;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.TextView;
 
 public class DrawerListViewAdapter extends BaseAdapter {
@@ -22,10 +18,10 @@ public class DrawerListViewAdapter extends BaseAdapter {
 	//private ListView lvDrawer;
 	private LayoutInflater inflater;
 	private Context context;
-	private final static int editProfit=0;
-	private final static int editSetting=1;
-	private final static int logout=2;
-	private final static int exit=3;
+	private final static int logout=0;
+	private final static int exit=1;
+	private final static int editSetting=2;
+	private final static int editProfit=3;
 	
 	public DrawerListViewAdapter(List<String> itemListView,Context context) {
 		this.itemListView=itemListView;
@@ -72,28 +68,18 @@ public class DrawerListViewAdapter extends BaseAdapter {
 		holder.tvItemText.setText(itemListView.get(position));
 	    switch(position)
 	    {
-//	    case editProfit:
-//	    	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_edit_profile));
-//	    	break;
-//	    case editSetting:
-//	    	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_edit_setting));
-//	    	break;
-//	    case logout:
-//	    	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_logout));
-//	    	break;
-//	    case exit:
-//	    	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_exit));
-//	    	break;
-	    
-	    case editProfit:
+	    case editSetting://2
+	    	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_edit_setting));
+	    	break;	    
+	    case logout://0
 	    	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_logout));
 	    	break;
-	    case editSetting:
+	    case exit://1
     	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_exit));
     	break;
-	    
-	    
-	    
+	    case editProfit://3
+	    	holder.ivItemIcon.setImageDrawable(convertView.getResources().getDrawable(R.drawable.drawer_edit_profile));
+	    	break;
 	    }
 	    holder.tvItemText.setGravity(Gravity.CENTER);
 		return convertView;

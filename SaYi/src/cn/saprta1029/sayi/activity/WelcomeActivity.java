@@ -1,40 +1,51 @@
 package cn.saprta1029.sayi.activity;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 
-import org.jivesoftware.smack.XMPPException;
-
+import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smack.packet.Presence;
+import org.jivesoftware.smack.provider.ProviderManager;
+import org.jivesoftware.smackx.OfflineMessageManager;
 import cn.saprta1029.sayi.R;
 import cn.sparta1029.sayi.components.LoadingDialog;
+import cn.sparta1029.sayi.db.BlacklistDBManger;
+import cn.sparta1029.sayi.db.BlacklistDBOpenHelper;
+import cn.sparta1029.sayi.db.MessageDBManager;
+import cn.sparta1029.sayi.db.MessageDBOpenHelper;
+import cn.sparta1029.sayi.db.MessageEntity;
 import cn.sparta1029.sayi.utils.SPUtil;
 import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.Window;
-import android.widget.Toast;
 
 public class WelcomeActivity extends Activity{
-
-	    private static final int GO_MAIN = 0;//È¥Ö÷Ò³
-	    private static final int GO_LOGIN = 1;//È¥µÇÂ¼Ò³
+	int error=0;
+	    private static final int GO_MAIN = 0;//å»ä¸»é¡µ
+	    private static final int GO_LOGIN = 1;//å»ç™»å½•é¡µ
 	    String account,password;
+	    
+	    
+	    
 	    /**
-	     * Ìø×ªÅĞ¶Ï
+	     * è·³è½¬åˆ¤æ–­
 	     */
-	    
-	    
+	    XMPPConnection connection;
+	    ArrayList<String> blacklistAccountList;
 	   
 
+	    
 	    @Override
 	    protected void onCreate(Bundle savedInstanceState) {
 	        super.onCreate(savedInstanceState);
 	        setContentView(R.layout.activity_welcome);
+	      
 	        SPUtil SPUtil=new SPUtil(this);
 	        String autoLogin=SPUtil.getString(SPUtil.keyAutoLogin, "");
 	        account=SPUtil.getString(SPUtil.keyCurrentUser, "");
@@ -45,6 +56,13 @@ public class WelcomeActivity extends Activity{
 	        } else {
 	            mHandler.sendEmptyMessageDelayed(GO_LOGIN, 2000);
 	        }
+	        
+	        BlacklistDBOpenHelper DBHelper = new BlacklistDBOpenHelper(
+	        		WelcomeActivity.this, "sayi", null, 1);
+			SQLiteDatabase db = DBHelper.getWritableDatabase();
+			BlacklistDBManger blacklistDBManager = new BlacklistDBManger();
+			blacklistAccountList = blacklistDBManager.blacklistAllAccountQuery(db);
+			db.close();
 	    }
 	    
 	    private Handler mHandler = new Handler(){
@@ -52,8 +70,8 @@ public class WelcomeActivity extends Activity{
 			@Override
 	        public void handleMessage(Message msg) {
 	            switch (msg.what) {
-	                case GO_MAIN://È¥Ö÷Ò³
-	                	 final LoadingDialog dialog = new LoadingDialog(WelcomeActivity.this, "ÕıÔÚµÇÂ¼");
+	                case GO_MAIN://å»ä¸»é¡µ
+	                	 final LoadingDialog dialog = new LoadingDialog(WelcomeActivity.this, "æ­£åœ¨ç™»å½•");
 	                	 dialog.setCanceledOnTouchOutside(false);
 	                	 dialog.show();
 	                	new Thread(new Runnable() {
@@ -72,7 +90,7 @@ public class WelcomeActivity extends Activity{
 	    						}
 	    						else
 	    						{
-	    							//TODO ÌáĞÑÎŞ·¨Á¬½Óµ½·şÎñÆ÷
+	    							//TODO æé†’æ— æ³•è¿æ¥åˆ°æœåŠ¡å™¨
 	    							    Intent intent = new Intent(WelcomeActivity.this, LoginActivity.class);
 	    			                    startActivity(intent);
 	    			                    finish();
@@ -80,7 +98,7 @@ public class WelcomeActivity extends Activity{
 	    					}
 	    				}).start();
 	                    break;
-	                case GO_LOGIN://È¥µÇÂ¼Ò³
+	                case GO_LOGIN://å»ç™»å½•é¡µ
 	                    Intent intent = new Intent(WelcomeActivity.this, LoginActivity.class);
 	                    startActivity(intent);
 	                    finish();
@@ -90,23 +108,82 @@ public class WelcomeActivity extends Activity{
 	    };
 	    
 	    
+//	    private Boolean loginServer(LoadingDialog dialog) {
+//	    	SPUtil SPUtil=new SPUtil(this);
+//	        String serverAddress=SPUtil.getString(SPUtil.keyAddress, "");
+//	        serverAddress = serverAddress.replaceAll("æœåŠ¡å™¨åœ°å€:", "");
+//	        XMPPConnection connect = XMPPConnectionUtil.getInstanceNotPresence().getConnection(serverAddress);
+//			if ( connect!= null) {
+//				try {
+//					connect.connect();
+//					connect.login(account,
+//							password);
+//					return true;
+//				}catch (XMPPException e) {
+//					Log.i("test", "è¿æ¥æœåŠ¡å™¨å¤±è´¥  XMPPExceptionï¼š" + e.toString());
+//					e.printStackTrace();
+//					return false;
+//				}
+//			} else {
+//				dialog.dismiss();
+//				return false;
+//			}
+//		}
+//}
+	    
+	    
 	    private Boolean loginServer(LoadingDialog dialog) {
 	    	SPUtil SPUtil=new SPUtil(this);
 	        String serverAddress=SPUtil.getString(SPUtil.keyAddress, "");
-	        serverAddress = serverAddress.replaceAll("·şÎñÆ÷µØÖ·:", "");
-			if (XMPPConnectionUtil.ConnectServer(serverAddress) != null) {
-				try {
-					XMPPConnectionUtil.ConnectServer(serverAddress).login(account,
-							password);
-					return true;
-				}catch (XMPPException e) {
-					Log.i("test", "Á¬½Ó·şÎñÆ÷Ê§°Ü  XMPPException£º" + e.toString());
-					e.printStackTrace();
+
+	        
+				// åˆ›å»ºè¿æ¥ï¼ŒçŠ¶æ€æœªä¸Šçº¿
+				XMPPConnectionUtil.configure(ProviderManager.getInstance());
+				connection = XMPPConnectionUtil.getInstanceNotPresence().getConnection(serverAddress);
+				if (connection != null) {
+					try {
+						connection.connect();
+						connection.login(account, password);
+						// ç¦»çº¿æ¶ˆæ¯è·å–
+						OfflineMessageManager offlineManager = new OfflineMessageManager(
+								connection);
+				//		Log.i("offlinetestv ",
+				//				"ç¦»çº¿æ¶ˆæ¯æ•°é‡:" + offlineManager.getMessageCount());
+						Iterator<org.jivesoftware.smack.packet.Message> it = offlineManager
+								.getMessages();
+						
+						MessageDBOpenHelper DBHelper = new MessageDBOpenHelper(
+								WelcomeActivity.this, "sayi", null, 1);
+						SQLiteDatabase db = DBHelper.getWritableDatabase();
+						MessageDBManager MessageDBManager = new MessageDBManager();
+						
+						while (it.hasNext()) {
+							org.jivesoftware.smack.packet.Message message = it
+									.next();
+							String sender = message.getFrom().split("@")[0];
+							sender = sender.substring(sender.indexOf("/") + 1);
+							if(!blacklistAccountList.contains(sender)){
+								
+							MessageEntity messageEntity=new MessageEntity(account,sender, message.getBody(), "unreaded");
+							MessageDBManager.messageInsert(db, messageEntity);
+						}
+						}
+						// åˆ é™¤ç¦»çº¿æ¶ˆæ¯
+						offlineManager.deleteMessages();
+						// å°†çŠ¶æ€è®¾ç½®æˆåœ¨çº¿
+						Presence presence = new Presence(Presence.Type.available);
+						connection.sendPacket(presence);
+
+						return true;
+					} catch (Exception e) {
+						Log.e("logintest", "error     " + e.toString());
+						e.printStackTrace();
+					}
 					return false;
-				}
-			} else {
-				dialog.dismiss();
+				} 
 				return false;
 			}
 		}
-}
+	    
+	    
+	    

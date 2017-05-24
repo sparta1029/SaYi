@@ -1,7 +1,6 @@
 package cn.sparta1029.sayi.db;
 
 
-import java.util.Dictionary;
 import java.util.Hashtable;
 
 import cn.sparta1029.sayi.utils.CipherUtil;

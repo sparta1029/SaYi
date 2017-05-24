@@ -2,25 +2,18 @@ package cn.sparta1029.sayi.components;
 import cn.saprta1029.sayi.R;
 import cn.sparta1029.sayi.db.UserInfoDBManager;
 import cn.sparta1029.sayi.db.UserInfoDBOpenHelper;
-import cn.sparta1029.sayi.db.UserInfoEntity;
 import cn.sparta1029.sayi.utils.SPUtil;
 import android.content.Context;  
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.drawable.Drawable;
-import android.os.Handler;
-import android.os.Message;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;  
-import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;  
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AutoCompleteTextView;  
-import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.ImageView;  
 import android.widget.RelativeLayout;  
 import android.widget.ImageView.ScaleType;  
@@ -45,7 +38,7 @@ public class DeletableAutoCompleteTextView extends RelativeLayout{
 	        initViews();  
 	    }  
 	    private void initViews() {  
-	        RelativeLayout.LayoutParams params=new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.FILL_PARENT,RelativeLayout.LayoutParams.WRAP_CONTENT);  
+	        RelativeLayout.LayoutParams params=new RelativeLayout.LayoutParams(android.view.ViewGroup.LayoutParams.FILL_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT);  
 	        actv=new AutoCompleteTextView(context);  
 	        actv.setLayoutParams(params);  
 	        actv.setPadding(0, 0,0, 0);
@@ -59,7 +52,7 @@ public class DeletableAutoCompleteTextView extends RelativeLayout{
 	                    leftDrawable.setBounds(0, 0, leftDrawable.getMinimumWidth(), leftDrawable.getMinimumHeight());  
 	                    actv.setCompoundDrawables(leftDrawable,null, null, null);  
 	        
-	        RelativeLayout.LayoutParams deleteIcon=new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT,RelativeLayout.LayoutParams.WRAP_CONTENT);  
+	        RelativeLayout.LayoutParams deleteIcon=new RelativeLayout.LayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT);  
 	        deleteIcon.addRule(RelativeLayout.ALIGN_PARENT_RIGHT); 
 	        deleteIcon.rightMargin=10;
 	        

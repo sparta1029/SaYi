@@ -1,6 +1,8 @@
 package cn.saprta1029.sayi.activity;
 
-import org.jivesoftware.smack.Connection;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.jivesoftware.smack.XMPPConnection;
 
 import cn.saprta1029.sayi.R;
@@ -11,7 +13,8 @@ import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+import android.os.Looper;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -22,6 +25,7 @@ public class RegisterActivity extends Activity{
     String account,password;
     private EditText etAccount,etNickname,etEmail,etPassword,etPasswordAgain;
     private Button register;
+    final static int PWDLENGTHMIN=6;
     /**
      * 跳转判断
      */
@@ -41,17 +45,14 @@ public class RegisterActivity extends Activity{
         etPasswordAgain=(EditText)findViewById(R.id.register_password_again);
         register=(Button)findViewById(R.id.register);
         register.setOnClickListener(registerClickListener);
-        
-      
         new Thread(new Runnable() {
 			@Override
 			public void run() {
 				SPUtil SPUtil=new SPUtil(RegisterActivity.this);
-		        connect = XMPPConnectionUtil.ConnectServer(
+		        connect = XMPPConnectionUtil.getInstanceNotPresence().getConnection(
 						SPUtil.getString(SPUtil.keyAddress, ""));
 			}
 		}).start();
-       
     }
     
     OnClickListener registerClickListener = new OnClickListener(){  
@@ -65,44 +66,68 @@ public class RegisterActivity extends Activity{
     	    					passwordAgain=etPasswordAgain.getText().toString().trim();
     	        if("".equals(account)||"".equals(nickname)||"".equals(email)||"".equals(password)||"".equals(passwordAgain))
     	        {
-    	        	Toast.makeText(RegisterActivity.this, "请输入登录信息", Toast.LENGTH_LONG).show();
-    	        }
-    	        else if(password.equals(passwordAgain))
-    	        {
-					final UserEntity UserEntity=new UserEntity(account, password, nickname, email);
-					final SPUtil SPUtil=new SPUtil(RegisterActivity.this);
-					new Thread(new Runnable() {
-						@Override
-						public void run() {
-							XMPPConnection connection = XMPPConnectionUtil.ConnectServer(
-									SPUtil.getString(SPUtil.keyAddress, ""));
-							UserRegister.registration(UserEntity,connection);
-							loginServer();
-							Intent intent=new Intent(RegisterActivity.this,LoginActivity.class);
-							finish();
-							startActivity(intent);
-						}
-					}).start();
+    	        	Toast.makeText(RegisterActivity.this, "请输入注册信息", Toast.LENGTH_LONG).show();
     	        }
     	        else
-    	        	Toast.makeText(RegisterActivity.this, "两次输入密码不一致", Toast.LENGTH_LONG).show();
-    	        
+    	        {
+    	        	//电子邮箱匹配
+    	        	String stringRegExp="^\\w+((-\\w+)|(\\.\\w+))*\\@[A-Za-z0-9]+((\\.|-)[A-Za-z0-9]+)*\\.[A-Za-z0-9]+$";   	        
+    	        	Pattern pattern = Pattern.compile(stringRegExp);
+    	        	Matcher emailMatcher = pattern.matcher(email);
+    	        	boolean emailMatch=emailMatcher.matches();
+    	        if(emailMatch)
+    	        {
+    	        	if(password.equals(passwordAgain))
+        	        {
+        	        	 //密码长度最少六位
+        	        	if(password.length()<PWDLENGTHMIN)
+        	        	{
+        	        		Toast.makeText(RegisterActivity.this, "密码长度最少"+PWDLENGTHMIN+"位", Toast.LENGTH_LONG).show();      	
+        	        	}
+        	        	else
+        	        	{
+    					final UserEntity UserEntity=new UserEntity(account, password, nickname, email);
+    					final SPUtil SPUtil=new SPUtil(RegisterActivity.this);
+    					new Thread(new Runnable() {
+    						@Override
+    						public void run() {
+    							if(UserRegister.registration(UserEntity,connect))
+    							{
+    								Intent intent=new Intent(RegisterActivity.this,LoginActivity.class);
+        							finish();
+        							startActivity(intent);
+    							}
+    							else
+    							{
+    								Looper.prepare();
+    								Toast.makeText(RegisterActivity.this,"用户已存在", Toast.LENGTH_LONG).show();
+    								Looper.loop();
+    							}
+    								//TODO ??loginServer();
+    							
+    							
+    						}
+    					}).start();
+        	        	}
+        	        }
+        	        else
+        	        	Toast.makeText(RegisterActivity.this, "两次输入密码不一致", Toast.LENGTH_LONG).show();	
+    	        }
+    	        else
+    	        	Toast.makeText(RegisterActivity.this, "邮箱格式错误", Toast.LENGTH_LONG).show();
     	    }  
+    	    }
     	};  
    
-    	private Boolean loginServer() {
-			try {
-				account=etAccount.getText().toString().trim();
-    			password=etPassword.getText().toString().trim();
-    			Log.i("logintest", account+"  //   "+password);
-				connect.login(account,password);
-				return true;
-			} catch (Exception e) {
-				Log.e("logintest", "error     " + e.toString());
-				e.printStackTrace();
-			} 
-			return false;
-}
+    	@Override
+    	public boolean onKeyDown(int keyCode, KeyEvent event) {
+    		if (keyCode == KeyEvent.KEYCODE_BACK) {
+    			Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+    			startActivity(intent);
+    			finish();
+    		}
+    		return super.onKeyDown(keyCode, event);
+    	}
     	
     	
     	

@@ -24,9 +24,5 @@
         android:id="@+id/chatlist_text_user"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toStartOf="@id/user_colon"    />
-    
-    
-    
-
+        android:layout_toStartOf="@id/user_colon"/>
 </RelativeLayout>

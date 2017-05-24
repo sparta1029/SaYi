@@ -81,15 +81,52 @@
         android:textSize="18.0dip"
         android:layout_marginBottom="15dp" 
         />
+
+
+
 <ListView
         android:id="@+id/main_drawer_listview"
         android:layout_width="240dp"
-        android:layout_height="match_parent"
+        android:layout_height="240dp"
         android:layout_gravity="start"
         android:choiceMode="singleChoice"
         android:divider="#dddddd"
         android:dividerHeight="5dp"
         android:background="#dddddd"/>
+ <LinearLayout
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" 
+    android:background="#dddddd">
+<TextView
+        android:id="@+id/main_drawer_city"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_vertical"
+        android:textColor="#333333"
+        android:textSize="18.0dip"
+        android:layout_marginBottom="15dp" 
+        />
 
+<TextView
+        android:id="@+id/main_drawer_weather"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_vertical"
+        android:textColor="#333333"
+        android:textSize="18.0dip"
+        android:layout_marginBottom="15dp" 
+        />
+
+<ImageView
+        android:id="@+id/main_drawer_weather_icon"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_vertical"
+        />
+</LinearLayout>
 </LinearLayout>
 </android.support.v4.widget.DrawerLayout>

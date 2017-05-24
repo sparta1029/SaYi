@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 public class ServerAddressDialog extends Dialog  {
 	 //定义回调事件，用于dialog的点击事件
 	private Button btnServerAddressConfirm,btnServerAddressCanel;

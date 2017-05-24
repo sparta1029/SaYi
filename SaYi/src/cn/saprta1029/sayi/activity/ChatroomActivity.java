@@ -3,9 +3,12 @@ package cn.saprta1029.sayi.activity;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -16,17 +19,14 @@ import android.widget.*;
 import java.util.*;
 
 import org.jivesoftware.smack.PacketListener;
-import org.jivesoftware.smack.Roster;
 import org.jivesoftware.smack.SmackConfiguration;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Packet;
+import org.jivesoftware.smack.util.StringUtils;
 import org.jivesoftware.smackx.muc.DiscussionHistory;
 import org.jivesoftware.smackx.muc.MultiUserChat;
-import org.jivesoftware.smackx.muc.RoomInfo;
-import org.jivesoftware.smackx.packet.VCard;
-
 import cn.saprta1029.sayi.R;
 import cn.sparta1029.sayi.utils.SPUtil;
 import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
@@ -34,7 +34,7 @@ import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 /*不需要在点击发送按键时，将信息存入chatList中（即调用addTextToList()）
  * 因为PacketListener在监听聊天室信息时不止会接收别人发的信息，也会获取自己发送的信息*/
 
-public class ChatroomActivity extends Activity{
+public class ChatroomActivity extends Activity implements OnClickListener{
 
     ArrayList<HashMap<String,String>> chatList=null;// 保存信息，包括发送信息的人（user，other）和信息内容  
     public final static int OTHER=1;
@@ -45,22 +45,31 @@ public class ChatroomActivity extends Activity{
     protected MyChatAdapter adapter=null;
     private Handler handler = new Handler(); 
     protected XMPPConnection connect ;
-    String account,password,serverAddress;
-    MultiUserChat multiUserChat;
-    static int ChatroomHistoryMAX=5;
+    protected String account,password,serverAddress;
+    protected MultiUserChat multiUserChat;
+    protected static int ChatroomHistoryMAX;
+    protected ImageButton ibtnBack,ibtnInfoChatroom;
+	String chatroomName;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_chatroom);
+
+        ibtnBack=(ImageButton)this.findViewById(R.id.chatroom_back);
+        ibtnBack.setOnClickListener(this);
+        ibtnInfoChatroom=(ImageButton)this.findViewById(R.id.chatroom_info);
+        ibtnInfoChatroom.setOnClickListener(this);
+        
+        
         chatList=new ArrayList<HashMap<String,String>>();       
         btnSendMessage=(Button)findViewById(R.id.chatroom_bottom_sendbutton);
         editText=(EditText)findViewById(R.id.chatroom_bottom_edittext);
         chatListView=(ListView)findViewById(R.id.chatroom_list);  
         
-		final String chatroomName;
 		final String chatroomPassword;
         SPUtil SPUtil = new SPUtil(this);
+        ChatroomHistoryMAX=Integer.parseInt(SPUtil.getString(SPUtil.keyChatroomHistoryMAX, ""));
 		account = SPUtil.getString(SPUtil.keyCurrentUser, "");
 		password = SPUtil.getString(SPUtil.keyCurrentPassword, "");
 		serverAddress = SPUtil.getString(SPUtil.keyAddress, "");
@@ -69,7 +78,7 @@ public class ChatroomActivity extends Activity{
 		Intent intent = getIntent();
 		chatroomName=intent.getStringExtra("chatroom");
 		chatroomPassword=intent.getStringExtra("password");
-		TextView tvFriendAccount=(TextView)this.findViewById(R.id.chatroom_contact_name);
+		TextView tvFriendAccount=(TextView)this.findViewById(R.id.chatroom_name);
 		tvFriendAccount.setText(chatroomName);
         adapter=new MyChatAdapter(this,chatList);
         btnSendMessage.setOnClickListener(new OnClickListener() {
@@ -83,11 +92,6 @@ public class ChatroomActivity extends Activity{
             		{
             			editText.setText("");
             		    multiUserChat.sendMessage(message);
-            		    //TODO
-//           		    String text=chatroomName+"@conference."+connect.getServiceName();
-//            		    RoomInfo ssss = MultiUserChat.getRoomInfo(connect, text);
-//            		    ssss.isPasswordProtected();//true false
-//            		    ssss.getOccupantsCount();//房间人数 返回int
             		}
 				} catch (XMPPException e) {
 					e.printStackTrace();
@@ -96,26 +100,86 @@ public class ChatroomActivity extends Activity{
         });
         
         chatListView.setAdapter(adapter);
+       
+        
         new Thread(new Runnable() {
 			@Override
 			public void run() {	
-			connect=XMPPConnectionUtil.ConnectServer(serverAddress);
-			joinChatRoom(chatroomName,chatroomPassword);
+			connect=XMPPConnectionUtil.getInstanceNotPresence().getConnection(serverAddress);
+			if(joinChatRoom(chatroomName,chatroomPassword))
+			{
+			findMulitUser(multiUserChat);
+			}
+			else
+			{
+			Intent intent= new Intent(ChatroomActivity.this, MainActivity.class);
+			intent.putExtra("chatroomfail", false);
+			finish();
+			startActivity(intent);
+			}
 			}
 		}).start();       
         
-
-        
     } 
+  
+    
+    @Override
+	public void onClick(View v) {  
+        switch(v.getId()){  
+        case R.id.chatroom_back:  //返回主页
+        	Intent intentBack= new Intent(ChatroomActivity.this, MainActivity.class);
+        	finish();
+            startActivity(intentBack);
+        	break;  
+        case R.id.chatroom_info:  
+        	
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					ArrayList<String> userList = findMulitUser(multiUserChat);
+					Intent intentInfo= new Intent(ChatroomActivity.this, InfoChatroomActivity.class);
+					intentInfo.putStringArrayListExtra("userlist", userList);
+					intentInfo.putExtra("roomname", chatroomName);
+					startActivity(intentInfo);
+				}
+			}).start();
+	    	 
+            break;  
+        }  
+    }  
+
+    //查询聊天室内的用户
+    public ArrayList<String> findMulitUser(MultiUserChat muc) {  
+        if (connect == null)  
+            return null;  
+        ArrayList<String> listUser = new ArrayList<String>();  
+        Iterator<String> it = muc.getOccupants();  
+        // 遍历出聊天室人员名称  
+        while (it.hasNext()) {  
+            // 聊天室成员名字  
+            String name = StringUtils.parseResource(it.next());  
+            listUser.add(name); 
+            Log.i("findtest","name"+name);
+        }  
+        return listUser;  
+}  
+    
+    @Override
+    public boolean  onKeyDown(int keyCode, KeyEvent event) {
+		if (keyCode == KeyEvent.KEYCODE_BACK) {
+			Intent intent=new Intent(ChatroomActivity.this,MainActivity.class);
+			startActivity(intent);
+		}
+		return super.onKeyDown(keyCode, event);
+	}
     
     public boolean joinChatRoom(String roomName,String chatroomPassword) {  
-		   loginServer();
 		multiUserChat = new MultiUserChat(connect, roomName+"@conference."+connect.getServiceName());  
 		if(chatroomPassword==null||"".equals(chatroomPassword)){
 		    try {  
-		        //multiUserChat.join(account); //user为你传入的用户名 
 		    	multiUserChat.addMessageListener(new PacketListener() {   
-		    		                public void processPacket(Packet packet) {   
+		    		                @Override
+									public void processPacket(Packet packet) {   
 		    		                    Message message = (Message) packet; 
 		    		                    //message.getFrom()为形式如sparta@conference.sparta1029/masterchief的字符串，需要进行切割，直接获取用户名
 		    		                    String sender=message.getFrom();
@@ -145,7 +209,8 @@ public class ChatroomActivity extends Activity{
 		        try {  
 			        //multiUserChat.join(account); //user为你传入的用户名 
 			    	multiUserChat.addMessageListener(new PacketListener() {   
-			    		                public void processPacket(Packet packet) {   
+			    		                @Override
+										public void processPacket(Packet packet) {   
 			    		                    Message message = (Message) packet;   
 			    		                    String sender=message.getFrom();
 	    		                    		sender= sender.substring(sender.indexOf("/")+1);
@@ -172,21 +237,6 @@ public class ChatroomActivity extends Activity{
 		}
 
 	
-    
-    private Boolean loginServer() {
-				try {
-					connect.login(account,password);
-					return true;
-				} catch (Exception e) {
-					Log.e("logintest", "error     " + e.toString());
-					e.printStackTrace();
-				} 
-				return false;
-	}
-    
-    
-    
-    
     protected void addTextToList(String text, String sender){
         HashMap<String,String> map=new HashMap<String,String>();
         map.put("sender",sender );
@@ -240,6 +290,10 @@ public class ChatroomActivity extends Activity{
                 //to中0，1为user的用户名和消息内容，2，3为other的用户名和内容
                 holder.textViewName=(TextView)convertView.findViewById( R.id.chatroomlist_user);
                 holder.textViewText=(TextView)convertView.findViewById(R.id.chatroomlist_text_user);
+                Resources resourcesBG = context.getResources();
+                Drawable drawableBG = resourcesBG.getDrawable(R.drawable.talk_user);
+                holder.textViewText.setBackground(drawableBG);
+                
             holder.textViewName.setText(sender);
             holder.textViewText.setText(chatList.get(position).get("text").toString());
             return convertView;
@@ -252,6 +306,11 @@ public class ChatroomActivity extends Activity{
                 //to中0，1为user的用户名和消息内容，2，3为other的用户名和内容
                 holder.textViewName=(TextView)convertView.findViewById( R.id.chatroomlist_other);
                 holder.textViewText=(TextView)convertView.findViewById(R.id.chatroomlist_text_other);
+                
+                Resources resourcesBG = context.getResources();
+                Drawable drawableBG = resourcesBG.getDrawable(R.drawable.talk_other);
+                holder.textViewText.setBackground(drawableBG);
+                
             holder.textViewName.setText(sender);
             holder.textViewText.setText(chatList.get(position).get("text").toString());
             return convertView;
