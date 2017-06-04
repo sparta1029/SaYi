@@ -96,12 +96,17 @@
             android:name=".activity.ProfileActivity"
             android:theme="@style/AppTheme">
         </activity>
+        <activity
+            android:name=".activity.ForgetPasswordActivity"
+            android:theme="@style/AppTheme">
+        </activity>
          
         <service
             android:name="com.baidu.location.f"
             android:enabled="true"
             android:process=":remote"></service>
-    
+    <service android:name="cn.sparta1029.sayi.xmpp.ContactService"> 
+    </service>
     </application>
 
 </manifest>

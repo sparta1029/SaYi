@@ -26,7 +26,6 @@ public class LoadingDialog extends Dialog {
 		super(context, R.style.loadingDialogStyle);
 		this.text = text;
 	}
-
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -38,8 +37,6 @@ public class LoadingDialog extends Dialog {
 		linearLayout.getBackground().setAlpha(200);
 		
 	}
-	
-	
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if (keyCode == KeyEvent.KEYCODE_BACK) {

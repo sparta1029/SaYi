@@ -25,6 +25,7 @@ import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Registration;
 import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smackx.OfflineMessageManager;
+import org.jivesoftware.smackx.packet.DelayInfo;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -64,7 +65,9 @@ import cn.sparta1029.sayi.db.UserInfoDBManager;
 import cn.sparta1029.sayi.db.UserInfoDBOpenHelper;
 import cn.sparta1029.sayi.db.UserInfoEntity;
 import cn.sparta1029.sayi.utils.EmailUtil;
+import cn.sparta1029.sayi.utils.GetDateTime;
 import cn.sparta1029.sayi.utils.SPUtil;
+import cn.sparta1029.sayi.xmpp.ReconnectListener;
 import cn.sparta1029.sayi.xmpp.UserRegister;
 import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 
@@ -79,7 +82,7 @@ public class LoginActivity extends Activity {
 	Receiver receiver = new Receiver();
 	XMPPConnection connection;
 	int error = 0;
-
+	BlacklistDBOpenHelper BlacklistDBHelper ;
 	private static final int TIME_OUT = 0;
 	private static final int SUCCESS = 1;
 	private static final int TIME_LIMIT = 15000; // 登陆超时时间 15秒
@@ -89,20 +92,15 @@ public class LoginActivity extends Activity {
 	LoadingDialog dialog;
 	String addressText = "服务器地址     ";
 	ArrayList<String> blacklistAccountList;
-
+	Handler handler=new Handler();
+	public Context context=LoginActivity.this;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_login);
 		// TODO
-	//	sendMail("sparta1029@outlook.com", "订单", "邮件由系统自动发送，请不要回复！");
-		BlacklistDBOpenHelper BlacklistDBHelper = new BlacklistDBOpenHelper(
+		BlacklistDBHelper = new BlacklistDBOpenHelper(
 				LoginActivity.this, "sayi", null, 1);
-		SQLiteDatabase dbBlacklist = BlacklistDBHelper.getWritableDatabase();
-		BlacklistDBManger blacklistDBManager = new BlacklistDBManger();
-		blacklistAccountList = blacklistDBManager
-				.blacklistAllAccountQuery(dbBlacklist);
-		dbBlacklist.close();
 
 		IntentFilter filter = new IntentFilter();
 		filter.addAction("cn.sparta1029.sayi.pwdbroadcast");
@@ -204,16 +202,15 @@ public class LoginActivity extends Activity {
 										SPUtil.putString(
 												SPUtil.keyCurrentPassword,
 												password);
-										// TODO 写入图片
-//										String userDire = LoginActivity.this
-//												.getApplication()
-//												.getExternalFilesDir(null)
-//												.getPath()
-//												+ "/user/" + account + "/";
-//										File destDir = new File(userDire);
-//										if (!destDir.exists()) {
-//											destDir.mkdirs();
-//										}
+										String userDire = LoginActivity.this
+												.getApplication()
+												.getExternalFilesDir(null)
+												.getPath()
+												+ "/user/" + account + "/";
+										File destDir = new File(userDire);
+										if (!destDir.exists()) {
+											destDir.mkdirs();
+										}
 										Intent intent = new Intent(
 												LoginActivity.this,
 												MainActivity.class);
@@ -379,8 +376,14 @@ public class LoginActivity extends Activity {
 		String serverAddressText = address.getText().toString()
 				.replaceAll(addressText, "").trim();
 		if ("".equals(serverAddressText)) {
+			handler.post(new Runnable() {
+				@Override
+				public void run() {
 			Toast.makeText(LoginActivity.this, "请输入服务器地址", Toast.LENGTH_LONG)
 					.show();
+				}
+			});
+			
 			return false;
 		} else {
 			// 创建连接，状态未上线
@@ -390,29 +393,46 @@ public class LoginActivity extends Activity {
 			if (connection != null) {
 				try {
 					connection.connect();
-					connection.login(account, password);
+					connection.login(account, password,"SaYi");
+					ReconnectListener connectListener = new ReconnectListener(serverAddressText,account,password);  
+					connection.addConnectionListener(connectListener);  
 					// 离线消息获取
-					OfflineMessageManager offlineManager = new OfflineMessageManager(
+					OfflineMessageManager offlineManager = new 
+							OfflineMessageManager(
 							connection);
-					// Log.i("offlinetestv ",
-					// "离线消息数量:" + offlineManager.getMessageCount());
-					Iterator<org.jivesoftware.smack.packet.Message> it = offlineManager
+					Iterator<org.jivesoftware.smack.packet.Message> it = 
+							offlineManager
 							.getMessages();
 
 					MessageDBOpenHelper DBHelper = new MessageDBOpenHelper(
 							LoginActivity.this, "sayi", null, 1);
 					SQLiteDatabase db = DBHelper.getWritableDatabase();
-					MessageDBManager MessageDBManager = new MessageDBManager();
+					MessageDBManager MessageDBManager = new 
+							MessageDBManager();
 
+					SQLiteDatabase dbBlacklist = BlacklistDBHelper.
+							getWritableDatabase();
+					BlacklistDBManger blacklistDBManager = new 
+							BlacklistDBManger();
+					blacklistAccountList = blacklistDBManager
+							.blacklistAllAccountQuery(dbBlacklist, account);
+					dbBlacklist.close();
 					while (it.hasNext()) {
 						org.jivesoftware.smack.packet.Message message = it
 								.next();
+						DelayInfo info=(DelayInfo) message
+								.getExtension("delay", "urn:xmpp:delay");
+						Date date=info.getStamp();
+						@SuppressWarnings("deprecation")
 						String sender = message.getFrom().split("@")[0];
 						sender = sender.substring(sender.indexOf("/") + 1);
 						if (!blacklistAccountList.contains(sender)) {
+							String offlineMessageDate=GetDateTime.
+									getDateTimeStringFromDate(date);	
+		                	Log.i("timetest", "offlineMessageDate:"+offlineMessageDate);
 							MessageEntity messageEntity = new MessageEntity(
 									account, sender, message.getBody(),
-									"unreaded");
+									"unreaded",offlineMessageDate);
 							MessageDBManager.messageInsert(db, messageEntity);
 						}
 					}
@@ -421,13 +441,28 @@ public class LoginActivity extends Activity {
 					// 将状态设置成在线
 					Presence presence = new Presence(Presence.Type.available);
 					connection.sendPacket(presence);
-
 					return true;
 				} catch (Exception e) {
 					Log.e("logintest", "error     " + e.toString());
-					e.printStackTrace();
+					if(e.toString().contains("authentication failed"))
+					{
+						dialog.dismiss();
+						timer.cancel();
+						error = 0;
+						return false;
+					}
+					else
+
+					{	dialog.dismiss();
+						timer.cancel();
+						Intent intent = new Intent();
+						intent.setAction("cn.sparta1029.sayi.pwdbroadcast");
+						intent.putExtra("loginError", "连接服务器失败");
+						error = 1;
+						LoginActivity.this.sendBroadcast(intent);
+						return false;
+					}
 				}
-				return false;
 			} else {
 				dialog.dismiss();
 				timer.cancel();
@@ -460,7 +495,7 @@ public class LoginActivity extends Activity {
 		menu.add(0, 1, 0, " 设置地址").setIcon(R.drawable.login_setting);
 		menu.add(0, 2, 0, " 注册用户").setIcon(R.drawable.login_register);
 		// TODO 忘记密码
-		// menu.add(0, 3, 0, " 忘记密码").setIcon(R.drawable.login_forget_password);
+		menu.add(0, 3, 0, " 忘记密码").setIcon(R.drawable.login_forget_password);
 		return super.onCreateOptionsMenu(menu);
 	}
 
@@ -504,7 +539,9 @@ public class LoginActivity extends Activity {
 			}
 			break;
 		case 3:
-			Toast.makeText(this, "忘记密码", Toast.LENGTH_SHORT).show();
+			Intent intent=new Intent(LoginActivity.this,ForgetPasswordActivity.class);
+			finish();
+			startActivity(intent);
 			break;
 		}
 		return super.onOptionsItemSelected(item);
@@ -541,24 +578,8 @@ public class LoginActivity extends Activity {
 		}
 	}
 
-	// TODO
+ 
 
-//	public void sendMail(final String toMail, final String title,
-//			final String body){
-//		new Thread(new Runnable() {
-//			@Override
-//			public void run() {
-//				EmailUtil mail = new EmailUtil();
-//				try {
-//					mail.sendMail();;
-//				} catch (AddressException e) {
-//					e.printStackTrace();
-//				} catch (MessagingException e) {
-//					e.printStackTrace();
-//				}
-//
-//		}).start();
-//	}
 
 	@Override
 	protected void onDestroy() {

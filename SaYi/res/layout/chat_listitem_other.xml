@@ -13,21 +13,27 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="5dip"
-        android:layout_alignParentStart="true"/>
+        android:layout_alignParentStart="true"
+         android:drawableTop="@drawable/chat_avatar"
+        android:text="用户名"/>
+      
+      <RelativeLayout
+          android:layout_toEndOf="@id/chatlist_other"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
       <TextView   
-        android:id="@+id/other_colon"
+        android:id="@+id/chatlist_time_other"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toEndOf="@id/chatlist_other"
-        android:text="@string/colon"    />
-      
+        android:text="时间"/>
     <TextView   
         android:id="@+id/chatlist_text_other"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toEndOf="@id/other_colon"/>
+        android:layout_below="@id/chatlist_time_other"
+        android:text="消息内容"/>
     
-    
+    </RelativeLayout>
     
 
 </RelativeLayout>

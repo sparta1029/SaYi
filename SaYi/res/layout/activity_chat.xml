@@ -50,7 +50,16 @@
         android:paddingTop="7dip"
         android:paddingBottom="3dip">
         
-        
+         <ImageButton
+            android:id="@+id/chat_bottom_sendfilebutton"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginStart="4dip"
+            android:layout_marginBottom="3dip"
+            android:src="@drawable/send_file"
+            android:layout_weight="3.8"
+            android:background="@drawable/send_file_button_bg"
+            android:textColor="@android:color/white"/>
         <EditText 
             android:id="@+id/chat_bottom_edittext"
             android:layout_width="match_parent"
@@ -62,11 +71,12 @@
             android:id="@+id/chat_bottom_sendbutton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="3.2"
+            android:layout_weight="3.5"
             android:layout_marginRight="4dip"
             android:layout_marginBottom="3dip"
             android:text="发送"
-            android:textColor="@android:color/white"/>"
+            android:background="@drawable/button_lightblue_bg"
+            android:textColor="@android:color/white"/>
         
         
     </LinearLayout>

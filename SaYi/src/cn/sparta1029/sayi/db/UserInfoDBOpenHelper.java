@@ -20,7 +20,11 @@ public class UserInfoDBOpenHelper extends SQLiteOpenHelper{
 		String sql="create table if not exists userinfo(account varchar primary key,pwd varchar)";
 		db.execSQL(sql);
 	}
-
+	@Override
+	public void onOpen(SQLiteDatabase db) {
+		String sql="create table if not exists userinfo(account varchar primary key,pwd varchar)";
+		db.execSQL(sql);
+	}
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 		// TODO Auto-generated method stub

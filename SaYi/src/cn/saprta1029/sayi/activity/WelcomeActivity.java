@@ -52,16 +52,16 @@ public class WelcomeActivity extends Activity{
 	        password=SPUtil.getString(SPUtil.keyCurrentPassword, "");
 	        if("true".equals(autoLogin))
 	        {
-				mHandler.sendEmptyMessageDelayed(GO_MAIN, 2000);
+				mHandler.sendEmptyMessageDelayed(GO_MAIN, 5000);
 	        } else {
-	            mHandler.sendEmptyMessageDelayed(GO_LOGIN, 2000);
+	            mHandler.sendEmptyMessageDelayed(GO_LOGIN, 5000);
 	        }
 	        
 	        BlacklistDBOpenHelper DBHelper = new BlacklistDBOpenHelper(
 	        		WelcomeActivity.this, "sayi", null, 1);
 			SQLiteDatabase db = DBHelper.getWritableDatabase();
 			BlacklistDBManger blacklistDBManager = new BlacklistDBManger();
-			blacklistAccountList = blacklistDBManager.blacklistAllAccountQuery(db);
+			blacklistAccountList = blacklistDBManager.blacklistAllAccountQuery(db,account);
 			db.close();
 	    }
 	    
@@ -135,9 +135,7 @@ public class WelcomeActivity extends Activity{
 	    private Boolean loginServer(LoadingDialog dialog) {
 	    	SPUtil SPUtil=new SPUtil(this);
 	        String serverAddress=SPUtil.getString(SPUtil.keyAddress, "");
-
-	        
-				// 创建连接，状态未上线
+	        // 创建连接，状态未上线
 				XMPPConnectionUtil.configure(ProviderManager.getInstance());
 				connection = XMPPConnectionUtil.getInstanceNotPresence().getConnection(serverAddress);
 				if (connection != null) {
@@ -164,7 +162,7 @@ public class WelcomeActivity extends Activity{
 							sender = sender.substring(sender.indexOf("/") + 1);
 							if(!blacklistAccountList.contains(sender)){
 								
-							MessageEntity messageEntity=new MessageEntity(account,sender, message.getBody(), "unreaded");
+							MessageEntity messageEntity=new MessageEntity(account,sender, message.getBody(), "unreaded","");
 							MessageDBManager.messageInsert(db, messageEntity);
 						}
 						}

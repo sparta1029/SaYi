@@ -23,9 +23,20 @@
             android:gravity="center_vertical"
             android:text="@string/friend"
             android:textColor="#666666"
-            android:drawableStart="@drawable/main_friend_666666"
+            android:drawableStart="@drawable/main_recent_icon"
             android:textSize="18.0dip" />
 
+          <cn.sparta1029.sayi.components.TextViewWithImage
+            android:id="@+id/main_text_contact"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_weight="1.0"
+            android:gravity="center_vertical"
+            android:text="@string/friend"
+            android:textColor="#666666"
+            android:drawableStart="@drawable/main_friend_666666"
+            android:textSize="18.0dip" />
+          
         <cn.sparta1029.sayi.components.TextViewWithImage
             android:id="@+id/main_text_chatroom"
             android:layout_width="fill_parent"

@@ -1,7 +1,9 @@
 package cn.saprta1029.sayi.activity;
+import java.io.File;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -14,10 +16,18 @@ import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.Roster;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.provider.ProviderManager;
 import org.jivesoftware.smackx.Form;
 import org.jivesoftware.smackx.FormField;
+import org.jivesoftware.smackx.filetransfer.FileTransfer.Status;
+import org.jivesoftware.smackx.filetransfer.FileTransferListener;
+import org.jivesoftware.smackx.filetransfer.FileTransferManager;
+import org.jivesoftware.smackx.filetransfer.FileTransferRequest;
+import org.jivesoftware.smackx.filetransfer.IncomingFileTransfer;
+import org.jivesoftware.smackx.filetransfer.OutgoingFileTransfer;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.muc.RoomInfo;
+import org.jivesoftware.smackx.packet.VCard;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -28,9 +38,14 @@ import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
+import android.app.ActivityManager.RunningServiceInfo;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -61,8 +76,10 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import cn.saprta1029.sayi.R;
+import cn.sparta1029.sayi.components.ContactListViewAdapter;
 import cn.sparta1029.sayi.components.DrawerListViewAdapter;
 import cn.sparta1029.sayi.components.FriendListViewAdapter;
+import cn.sparta1029.sayi.components.RequestListViewAdapter;
 import cn.sparta1029.sayi.components.TextViewWithImage;
 import cn.sparta1029.sayi.db.BlacklistDBManger;
 import cn.sparta1029.sayi.db.BlacklistDBOpenHelper;
@@ -70,9 +87,12 @@ import cn.sparta1029.sayi.db.MessageDBManager;
 import cn.sparta1029.sayi.db.MessageDBOpenHelper;
 import cn.sparta1029.sayi.db.MessageEntity;
 import cn.sparta1029.sayi.utils.GetDrawableId;
+import cn.sparta1029.sayi.utils.GetNetWorkTime;
 import cn.sparta1029.sayi.utils.GetWeather;
 import cn.sparta1029.sayi.utils.IsInBlacklist;
 import cn.sparta1029.sayi.utils.SPUtil;
+import cn.sparta1029.sayi.xmpp.ContactManager;
+import cn.sparta1029.sayi.xmpp.ContactService;
 import cn.sparta1029.sayi.xmpp.XMPPConnectionUtil;
 public class MainActivity extends Activity {
 	TextView TextView1, TextView2;
@@ -88,20 +108,24 @@ public class MainActivity extends Activity {
 	private String account, password;
 	private List<String> itemListView = null;
 	private ListView lvDrawer, lvMainFriend;
+	private ListView lvMainContact, lvMainRequest;
 	private DrawerListViewAdapter adapter;
 	private FriendListViewAdapter adapterFriendList;
+	private RequestListViewAdapter adapterRequest;
+	private ContactListViewAdapter adapterContact;
 	private DrawerLayout drawerLayout;
 	private boolean drawerOpen = false;
-	private Map<String, Chat> chatManage = new HashMap<String, Chat>();// 聊天窗口管理map集合
 	ArrayList<String> senderList;
 	ArrayList<Integer> count;
+	ArrayList<String> newMessage;
+	ArrayList<String> messageTime;
 	private Handler handler = new Handler();
 	String serverAddress;
 	XMPPConnection connect;
 	MultiUserChat muc;
-	private final int RoomExitWithPWD = 0;
-	private final int RoomExitWithoutPWD = 5;
-	private final int RoomNotExit = 10;
+	private final int RoomExistWithPWD = 0;
+	private final int RoomExistWithoutPWD = 5;
+	private final int RoomNotExist = 10;
 	private final int RoomError = 17;
 	boolean roomName;
 	ChatManager chatManager; 
@@ -110,10 +134,12 @@ public class MainActivity extends Activity {
 	TextView tvCity,tvWeather;
 	ImageView ivWeatherIcon;
     String weatherText,weatherTemperature,weatherCodeText;
-    
-	//TODO
     private static final int UPDATE_TIME = 100000;
     private LocationClient locationClient = null;
+    UpdateBroadcastReceiver broadcastReceiver;
+    ArrayList<HashMap<String,String>>  requestList;
+    ArrayList<String> contactList;
+    public static final String ACTION_UPDATE = "action.updateRequest";
     
     @Override
     public void onDestroy() {
@@ -124,6 +150,7 @@ public class MainActivity extends Activity {
         }
     }
 	
+	@SuppressWarnings("deprecation")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -132,7 +159,6 @@ public class MainActivity extends Activity {
 		InitImageView();
 		InitTextView();
 		InitViewPager();
-		
 		tvCity=(TextView)findViewById(R.id.main_drawer_city);
 		tvWeather=(TextView)findViewById(R.id.main_drawer_weather);
 		ivWeatherIcon=(ImageView)findViewById(R.id.main_drawer_weather_icon);
@@ -160,7 +186,7 @@ public class MainActivity extends Activity {
         	                String JSONText = weather.getWeatherText(newLocation.getCity());
         	                JSONObject JSONObjectMain = new JSONObject(JSONText);  
         	                JSONArray results = JSONObjectMain.getJSONArray("results");//获取[]中的内容，转为JSONArray对象
-        	              //获取到对象now其中包含 text（天气情况 ），temperature（温度），code 天气代码
+        	                //获取到对象now其中包含 text（天气情况 ），temperature（温度），code 天气代码
         	                JSONObject JSONObjectNow=results.getJSONObject(0).getJSONObject("now");
         	                weatherText=JSONObjectNow.getString("text");
         	                weatherTemperature=JSONObjectNow.getString("temperature");
@@ -181,19 +207,12 @@ public class MainActivity extends Activity {
 						@Override
 						public void onConnectHotSpotMessage(String arg0,
 								int arg1) {
-							// TODO Auto-generated method stub
 						}
         	        });
         
         
         locationClient.start();
         locationClient.requestLocation();
-		
-		
-		
-		
-		
-		
 		
 		Intent intent = getIntent();
 		roomName = intent.getBooleanExtra("chatroomfail", true);
@@ -203,6 +222,8 @@ public class MainActivity extends Activity {
 		SPUtil SPUtil = new SPUtil(this);
 		account = SPUtil.getString(SPUtil.keyCurrentUser, "");
 		password = SPUtil.getString(SPUtil.keyCurrentPassword, "");
+
+		
 		drawerLayout = (DrawerLayout) MainActivity.this
 				.findViewById(R.id.main_drawerLayout);
 		android.app.ActionBar actionBar = getActionBar();
@@ -226,13 +247,36 @@ public class MainActivity extends Activity {
 		lvDrawer.setAdapter(adapter);
 		lvDrawer.setOnItemClickListener(new lvDrawerItemClickListener());
 		serverAddress = SPUtil.getString(SPUtil.keyAddress, "");
-			
+		
 		
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
 				connect = XMPPConnectionUtil.getInstanceNotPresence()
 						.getConnection(serverAddress);
+				//TODO
+				ContactManager.addFriend("yuri",connect);
+				ContactManager.addFriend("cortana",connect);
+				Log.i("contacttest", "好友列表"+ContactManager.getFriend(connect).toString());
+				 IntentFilter filter = new IntentFilter();  
+				        filter.addAction(ACTION_UPDATE);  
+				        broadcastReceiver = new UpdateBroadcastReceiver();  
+				        registerReceiver(broadcastReceiver, filter);  
+				
+				if(!MainActivity.this.isWorked(MainActivity.this, "cn.sparta1029.sayi.xmpp.ContactService")){  	                    
+					Intent serviceIntent=new Intent(MainActivity.this,ContactService.class);	
+					serviceIntent.putExtra("address", serverAddress);
+					MainActivity.this.startService(serviceIntent);  
+		            Log.i("servicetest", "服务启动了！！");  
+					                }  
+					                else{  
+					                	Intent serviceIntent=new Intent(MainActivity.this,ContactService.class);	
+					                	MainActivity.this.stopService(serviceIntent);  
+					                    Log.i("servicetest", "服务关闭了！！");  
+					                }  
+				
+				
+				//ContactManager.removeFriend("yuri",connect);
 				// 监听所有用户发来的信息
 				chatManager = connect.getChatManager();
 				if(chatManager.getChatListeners()!=null)
@@ -253,10 +297,29 @@ public class MainActivity extends Activity {
 				MainActivity.this, "sayi", null, 1);
 		SQLiteDatabase db = DBHelper.getWritableDatabase();
 		BlacklistDBManger blacklistDBManager = new BlacklistDBManger();
-		blacklistAccountList = blacklistDBManager.blacklistAllAccountQuery(db);
+		blacklistAccountList = blacklistDBManager.blacklistAllAccountQuery(db,account);
 		db.close();
+	
 	}
 
+
+	public boolean isWorked(Context context,String className) {  
+		            ActivityManager myManager = (ActivityManager) context 
+		                    .getApplicationContext().getSystemService(  
+		                            Context.ACTIVITY_SERVICE);  
+		            ArrayList<RunningServiceInfo> runningService = (ArrayList<RunningServiceInfo>) myManager  
+		                    .getRunningServices(30);  
+		            for (int i = 0; i < runningService.size(); i++) {  
+		                if (runningService.get(i).service.getClassName().toString()  
+		                        .equals(className)) {  
+		                    return true;  
+		                }  
+		            }  
+		            return false;  
+		        }  
+	
+		  
+		
 	public ChatManagerListener chatManagerListener = new ChatManagerListener() {
 		@Override
 		public void chatCreated(Chat chat, boolean arg1) {
@@ -276,26 +339,49 @@ public class MainActivity extends Activity {
 	                else
 	                {
 	                	//接收到的消息存入数据库，标记为unreaded
+	                	String messageDate=GetNetWorkTime.getWebsiteDatetime();
+	                	Log.i("timetest", "messageDate:"+messageDate);
 					MessageEntity messageEntity = new MessageEntity(account,sender,
-							message.getBody(), "unreaded");
+							message.getBody(), "unreaded",messageDate);
 					MessageDBOpenHelper DBHelper = new MessageDBOpenHelper(
 							MainActivity.this, "sayi", null, 1);
 					SQLiteDatabase db = DBHelper.getWritableDatabase();
 					MessageDBManager MessageDBManager = new MessageDBManager();
 					MessageDBManager.messageInsert(db, messageEntity);
+					ArrayList<Integer> tempCount=new ArrayList<Integer>();
+					ArrayList<String> tempNewMessage=new ArrayList<String>();
+					ArrayList<String> tempMessageTime=new ArrayList<String>();
+					ArrayList<String> tempSenderList=new ArrayList<String>();
 					senderList.clear();
-					senderList = MessageDBManager.messageAllSenderQuery(db,account);
+					tempSenderList = MessageDBManager.messageAllSenderQuery(db,account);
+					Collections.reverse(tempSenderList);
+					senderList.addAll(tempSenderList);
 					count.clear();
-					count = new ArrayList<Integer>();
+					newMessage.clear();
+					messageTime.clear();
+					ArrayList<HashMap<String, String>> map=new ArrayList<HashMap<String, String>> ();
 					for (int i = 0; i < senderList.size(); i++) {
-						count.add(MessageDBManager.messageUnreadedQuery(db,
-								senderList.get(i)).size());
+						map = MessageDBManager.messageQueryOfSender(db,senderList.get(i));
+						Log.i("maptest","map" +map);
+						int unreadedCount=0;
+						for(int j=0;j<map.size();j++)
+						{
+							if(map.get(j).get("state").equals("unreaded"))
+								unreadedCount++;	
+						}
+						tempCount.add(unreadedCount);
+						tempNewMessage.add(map.get(map.size()-1).get("message"));
+						tempMessageTime.add(map.get(map.size()-1).get("time"));
 					}
+					count.addAll(tempCount);
+					newMessage.addAll(tempNewMessage);
+					messageTime.addAll(tempMessageTime);
 					handler.post(new Runnable() {
 						@Override
 						public void run() {
-							adapterFriendList.updateList(senderList, count);
-							adapterFriendList.notifyDataSetChanged();
+							adapterFriendList = new FriendListViewAdapter(
+									MainActivity.this, senderList, count,newMessage,messageTime);
+							lvMainFriend.setAdapter(adapterFriendList);
 						}
 					});
 				}
@@ -304,6 +390,24 @@ public class MainActivity extends Activity {
 			});
 		}
 	};
+	
+	 private class UpdateBroadcastReceiver extends BroadcastReceiver {  
+		  
+		        @Override  
+		        public void onReceive(Context context, Intent intent) {  
+		        	String request = intent.getStringExtra("request");
+		        	String contactAccount = intent.getStringExtra("account");
+		            itemListView.add(request+contactAccount);
+		            adapter.notifyDataSetChanged();
+		        }  
+		  
+		    }  
+	
+	
+	
+	
+	
+	
 	
 	class lvDrawerItemClickListener implements OnItemClickListener {
 		@Override
@@ -324,6 +428,7 @@ public class MainActivity extends Activity {
 					public void run() {
 						if (connect.isConnected())
 							connect.disconnect();
+						//TODO 移除重新连接监听
 					}
 				}).start();
 				finish();
@@ -331,6 +436,8 @@ public class MainActivity extends Activity {
 				break;
 			case 1:
 				finish();
+				Intent serviceIntent=new Intent(MainActivity.this,ContactService.class);	
+	        	MainActivity.this.stopService(serviceIntent);  
 				System.exit(0);
 				break;
 			case 2:
@@ -360,11 +467,27 @@ public class MainActivity extends Activity {
 			MessageDBManager MessageDBManager = new MessageDBManager();
 			senderList.clear();
 			senderList = MessageDBManager.messageAllSenderQuery(db,account);
+			Collections.reverse(senderList);
 			Intent intent = new Intent(MainActivity.this, ChatActivity.class);
 			intent.putExtra("otherAccount", senderList.get(position));
 			startActivity(intent);
 			chatManager.removeChatListener(chatManagerListener);
 			finish();
+		}
+	}
+	
+	class lvMainRequestItemClickListener implements OnItemClickListener {
+		@Override
+		public void onItemClick(AdapterView<?> parent, View view, int position,
+				long id) {
+			Toast.makeText(MainActivity.this, "request"+position, Toast.LENGTH_SHORT).show();
+		}
+	}
+	class lvMainContactItemClickListener implements OnItemClickListener {
+		@Override
+		public void onItemClick(AdapterView<?> parent, View view, int position,
+				long id) {
+			Toast.makeText(MainActivity.this, "request"+position, Toast.LENGTH_SHORT).show();
 		}
 	}
 	public void initDrawerListViewData() {
@@ -391,6 +514,7 @@ public class MainActivity extends Activity {
 		listViews = new ArrayList<View>();
 		LayoutInflater mInflater = getLayoutInflater();
 		listViews.add(mInflater.inflate(R.layout.main_friend, null));
+		listViews.add(mInflater.inflate(R.layout.main_contact, null));
 		listViews.add(mInflater.inflate(R.layout.main_chatroom, null));
 		mPager.setAdapter(new MyPagerAdapter(listViews));
 		mPager.setCurrentItem(0);
@@ -406,7 +530,7 @@ public class MainActivity extends Activity {
 		DisplayMetrics dm = new DisplayMetrics();
 		getWindowManager().getDefaultDisplay().getMetrics(dm);
 		int screenW = dm.widthPixels;// 获取分辨率宽度
-		offset = (screenW / 2 - bmpW) / 2;// 计算偏移量
+		offset = (screenW / 3 - bmpW) / 2;// 计算偏移量
 		Matrix matrix = new Matrix();
 		matrix.postTranslate(offset, 0);
 		cursor.setImageMatrix(matrix);// 设置动画初始位置
@@ -433,20 +557,32 @@ public class MainActivity extends Activity {
 		@Override
 		public Object instantiateItem(View arg0, int arg1) {
 			((ViewPager) arg0).addView(mListViews.get(arg1), 0);
-			// 响应viewpager中子view的控件
+			// 初始化viewpager中子view的控件
 			if (arg1 == 0) {
 				MessageDBOpenHelper DBHelper = new MessageDBOpenHelper(
 						MainActivity.this, "sayi", null, 1);
 				SQLiteDatabase db = DBHelper.getWritableDatabase();
 				MessageDBManager MessageDBManager = new MessageDBManager();
 				senderList = MessageDBManager.messageAllSenderQuery(db,account);
+				Collections.reverse(senderList);
 				count = new ArrayList<Integer>();
+				newMessage=new ArrayList<String>();
+				messageTime=new ArrayList<String>();
+				ArrayList<HashMap<String, String>> map=new ArrayList<HashMap<String, String>> ();
 				for (int i = 0; i < senderList.size(); i++) {
-					count.add(MessageDBManager.messageUnreadedQuery(db,
-							senderList.get(i)).size());
+					map = MessageDBManager.messageQueryOfSender(db,senderList.get(i));
+					int unreadedCount=0;
+					for(int j=0;j<map.size();j++)
+					{
+						if(map.get(j).get("state").equals("unreaded"))
+							unreadedCount++;	
+					}
+					count.add(unreadedCount);
+					newMessage.add(map.get(map.size()-1).get("message"));
+					messageTime.add(map.get(map.size()-1).get("time"));
 				}
 				adapterFriendList = new FriendListViewAdapter(
-						MainActivity.this, senderList, count);
+						MainActivity.this, senderList, count,newMessage,messageTime);
 				lvMainFriend = (ListView) mListViews.get(arg1).findViewById(
 						R.id.main_friend_recent_list);
 				lvMainFriend.setAdapter(adapterFriendList);
@@ -506,7 +642,7 @@ public class MainActivity extends Activity {
 						}
 					}
 				});
-			} else if (arg1 == 1) {
+			} else if (arg1 == 2) {
 				final EditText etChatroomName = (EditText) mListViews.get(arg1)
 						.findViewById(R.id.chatroom_name);
 				final EditText etChatroomPassword = (EditText) mListViews.get(
@@ -545,9 +681,9 @@ public class MainActivity extends Activity {
 											"请输入聊天室名", Toast.LENGTH_SHORT)
 											.show();
 								else if (isChatroomExist(etChatroomName
-										.getText().toString().trim()) != RoomExitWithPWD
+										.getText().toString().trim()) != RoomExistWithPWD
 										|| isChatroomExist(etChatroomName
-												.getText().toString().trim()) != RoomExitWithoutPWD) {
+												.getText().toString().trim()) != RoomExistWithoutPWD) {
 									if (chatroomPasswordAgain
 											.equals(chatroomPassword)
 											|| chatroomPasswordAgain == chatroomPassword)// 密码相同
@@ -645,9 +781,9 @@ public class MainActivity extends Activity {
 						intent.putExtra("chatroom", etChatroomName.getText()
 								.toString().trim());
 						if (isChatroomExist(etChatroomName.getText().toString()
-								.trim()) != RoomNotExit) {
+								.trim()) != RoomNotExist) {
 							if (isChatroomExist(etChatroomName.getText()
-									.toString().trim()) == RoomExitWithPWD)// 房间存在且有密码
+									.toString().trim()) == RoomExistWithPWD)// 房间存在且有密码
 							{
 								if (etChatroomPassword == null
 										|| "".equals(etChatroomPassword)) {
@@ -669,6 +805,32 @@ public class MainActivity extends Activity {
 									Toast.LENGTH_SHORT).show();
 					}
 				});
+			}else if(arg1==1)
+			{
+				//联系人子页面
+				requestList=new ArrayList<HashMap<String,String>>();
+				contactList=new ArrayList<String>();
+				for(int i=0;i<5;i++)
+				{
+					HashMap<String,String> map=new HashMap<String,String>();
+					map.put("contactname", ""+i);
+					map.put("request", ""+i+5);
+					requestList.add(map);
+					contactList.add(""+i+100);
+				}
+				adapterRequest = new RequestListViewAdapter(MainActivity.this,requestList);
+				lvMainRequest = (ListView) mListViews.get(arg1).findViewById(
+						R.id.main_contact_request_list);
+				lvMainRequest.setAdapter(adapterRequest);
+				lvMainRequest
+						.setOnItemClickListener(new lvMainRequestItemClickListener());	
+	
+				adapterContact = new ContactListViewAdapter(MainActivity.this,contactList);
+				lvMainContact = (ListView) mListViews.get(arg1).findViewById(
+						R.id.main_contact_list);
+				lvMainContact.setAdapter(adapterContact);
+				lvMainContact
+						.setOnItemClickListener(new lvMainContactItemClickListener());
 			}
 			return mListViews.get(arg1);
 		}
@@ -705,6 +867,7 @@ public class MainActivity extends Activity {
 	 */
 	public class MyOnPageChangeListener implements OnPageChangeListener {
 		int one = offset * 2 + bmpW;// 页卡1 -> 页卡2 偏移量
+		int two = one*2;// 页卡1 -> 页卡3 偏移量
 		@Override
 		public void onPageSelected(int arg0) {
 			Animation animation = null;
@@ -716,7 +879,17 @@ public class MainActivity extends Activity {
 				TextViewWithImage tvwiTitleChatroom = (TextViewWithImage) MainActivity.this
 						.findViewById(R.id.main_text_chatroom);
 				tvwiTitleChatroom.setTextColor(Color.rgb(102, 102, 102));
-				animation = new TranslateAnimation(one, 0, 0, 0);
+				TextViewWithImage tvwiTitleContact = (TextViewWithImage) MainActivity.this
+						.findViewById(R.id.main_text_contact);
+				tvwiTitleContact.setTextColor(Color.rgb(102, 102, 102));
+				
+				if (currIndex == 1) {
+					animation = new TranslateAnimation(one, 0, 0, 0);
+				} else if (currIndex == 2) {
+					animation = new TranslateAnimation(two, 0, 0, 0);
+				}
+				
+				
 				break;
 			case 1:
 				tvwitvTitleFriend = (TextViewWithImage) MainActivity.this
@@ -724,9 +897,37 @@ public class MainActivity extends Activity {
 				tvwitvTitleFriend.setTextColor(Color.rgb(102, 102, 102));
 				tvwiTitleChatroom = (TextViewWithImage) MainActivity.this
 						.findViewById(R.id.main_text_chatroom);
-				tvwiTitleChatroom.setTextColor(Color.rgb(158, 203, 226));
-				animation = new TranslateAnimation(offset, one, 0, 0);
+				tvwiTitleChatroom.setTextColor(Color.rgb(102, 102, 102));
+				tvwiTitleContact = (TextViewWithImage) MainActivity.this
+						.findViewById(R.id.main_text_contact);
+				tvwiTitleContact.setTextColor(Color.rgb(158, 203, 226));
+				
+				if (currIndex == 0) {
+					animation = new TranslateAnimation(offset, one, 0, 0);
+				} else if (currIndex == 2) {
+					animation = new TranslateAnimation(two, one, 0, 0);
+				}
 				break;
+				
+				
+			case 2:
+				tvwitvTitleFriend = (TextViewWithImage) MainActivity.this
+						.findViewById(R.id.main_text_friend);
+				tvwitvTitleFriend.setTextColor(Color.rgb(102, 102, 102));
+				tvwiTitleChatroom = (TextViewWithImage) MainActivity.this
+						.findViewById(R.id.main_text_chatroom);
+				tvwiTitleChatroom.setTextColor(Color.rgb(158, 203, 226));
+				tvwiTitleContact = (TextViewWithImage) MainActivity.this
+						.findViewById(R.id.main_text_contact);
+				tvwiTitleContact.setTextColor(Color.rgb(102, 102, 102));
+				
+				if (currIndex == 0) {
+					animation = new TranslateAnimation(offset, two, 0, 0);
+				} else if (currIndex == 1) {
+					animation = new TranslateAnimation(one, two, 0, 0);
+				}
+				break;
+				
 			}
 			currIndex = arg0;
 			animation.setFillAfter(true);// True:图片停在动画结束位置
@@ -756,8 +957,6 @@ public class MainActivity extends Activity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		setIconEnable(menu, true);
 		// TODO 右上角菜单
-		// menu.add(0, 1, 0, "私聊").setIcon(R.drawable.drawer_logout);
-		// menu.add(0, 5, 0, "群聊").setIcon(R.drawable.drawer_exit);
 		return super.onCreateOptionsMenu(menu);
 	}
 	public static boolean addUser(Roster roster, String userName, String name) {
@@ -778,11 +977,11 @@ public class MainActivity extends Activity {
 			roomInfo = MultiUserChat.getRoomInfo(connect, text);
 			if (roomInfo != null) {
 				if (roomInfo.isPasswordProtected())
-					return this.RoomExitWithPWD;
+					return this.RoomExistWithPWD;
 				else
-					return this.RoomExitWithoutPWD;
+					return this.RoomExistWithoutPWD;
 			} else
-				return this.RoomNotExit;
+				return this.RoomNotExist;
 		} catch (XMPPException e) {
 			e.printStackTrace();
 			Log.i("esittest", "error :" + e.toString());
@@ -826,7 +1025,6 @@ public class MainActivity extends Activity {
 			result = true;
 		} catch (Exception e) {
 			e.printStackTrace();
-			Log.i("createtest", e.toString());
 		}
 		return result;
 	}
@@ -887,6 +1085,8 @@ public class MainActivity extends Activity {
 			mHandler.sendEmptyMessageDelayed(0, 2000);
 		} else {
 			finish();
+			Intent serviceIntent=new Intent(MainActivity.this,ContactService.class);	
+        	MainActivity.this.stopService(serviceIntent);  
 			System.exit(0);
 		}
 	}

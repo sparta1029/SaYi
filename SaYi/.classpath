@@ -14,5 +14,6 @@
 	<classpathentry kind="lib" path="maillib/activation.jar"/>
 	<classpathentry kind="lib" path="maillib/additionnal.jar"/>
 	<classpathentry kind="lib" path="maillib/mail.jar"/>
+	<classpathentry exported="true" kind="lib" path="D:/GP/android-viewbadger.jar"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

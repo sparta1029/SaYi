@@ -102,7 +102,6 @@ public class DeletableAutoCompleteTextViewAdapter extends BaseAdapter implements
 	  
 	    @Override  
 	    public Object getItem(int position) {  
-	        //此方法有误，尽量不要使用  
 	        return mObjects.get(position);  
 	    }  
 	  

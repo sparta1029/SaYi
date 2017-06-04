@@ -38,35 +38,36 @@ public class XMPPConnectionUtil {
 	private static class XMPPNestClass{    
 		private static final XMPPConnectionUtil instance = new XMPPConnectionUtil();
 		 }
-	
-	
 	public static XMPPConnectionUtil getInstanceNotPresence() {    
-		  // 外围类能直接访问内部类（不管是否是静态的）的私有变量    
 		  return XMPPNestClass.instance;    
 		 } 
-	
 	public XMPPConnection getConnection(String serverAddress) {  
 				if (connection == null) {  
 					connection=ConnectServerNotPresence(serverAddress);  
 		        }  
 		        return connection;  
 		    }
-	
 	public XMPPConnection ConnectServerNotPresence(String serverAddress) {
+		try {  
+			                    Class.forName("org.jivesoftware.smack.ReconnectionManager");  
+			                } catch (Exception e1) {  
+			                }   
 		serverAddress=serverAddress.trim();
 		//TODO “sparta1029”改为openfire所设置的域名
-		ConnectionConfiguration connConfig=new ConnectionConfiguration(serverAddress,5222,"sparta1029");
+		ConnectionConfiguration connConfig=new 
+				ConnectionConfiguration(serverAddress,5222);
 		connConfig.setReconnectionAllowed(true);
 		connConfig.setSendPresence(false);
 		connConfig.setSecurityMode(ConnectionConfiguration.SecurityMode.disabled);
-		SASLAuthentication.registerSASLMechanism("PLAIN", SASLPlainMechanism.class);
+		SASLAuthentication.registerSASLMechanism("PLAIN", 
+				SASLPlainMechanism.class);
 		SASLAuthentication.supportSASLMechanism("PLAIN",0);
 		XMPPConnection  Connection = new XMPPConnection(connConfig,null);	
 		return Connection;
 	}
-	
 	public ChatManager getMyChatManager() {
-		ChatManager chatManager=XMPPConnectionUtil.getInstanceNotPresence().connection.getChatManager();
+		ChatManager chatManager=XMPPConnectionUtil.
+				getInstanceNotPresence().connection.getChatManager();
 		return chatManager;
 	}
 
