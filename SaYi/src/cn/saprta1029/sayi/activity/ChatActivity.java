@@ -1,9 +1,12 @@
 package cn.saprta1029.sayi.activity;
 
+
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Point;
 import android.graphics.drawable.Drawable;
@@ -20,8 +23,12 @@ import android.view.Window;
 import android.widget.*;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URI;
 import java.util.*;
 
+import org.apache.http.util.EncodingUtils;
 import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ChatManagerListener;
@@ -57,7 +64,7 @@ public class ChatActivity extends Activity implements OnClickListener {
 	private static final int FILE_SELECT_CODE = 5;
 	protected ListView lvChatList = null;
 	protected Button btnSendMessage;
-	ImageButton btnSendFileMessage;
+	ImageButton btnSendFile;
 	protected EditText editText = null;
 	protected MyChatAdapter adapter = null;
 	private Handler handler = new Handler();
@@ -72,7 +79,8 @@ public class ChatActivity extends Activity implements OnClickListener {
 	Collection<ChatManagerListener> chatListener;
 	ArrayList<String> blacklistAccountList;
 	FileTransferManager fileTransferManager;
-
+	int selectFileCode=920;
+			
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		// 传入两个用户
@@ -81,7 +89,7 @@ public class ChatActivity extends Activity implements OnClickListener {
 		setContentView(R.layout.activity_chat);
 		chatList = new ArrayList<HashMap<String, Object>>();
 		btnSendMessage = (Button) findViewById(R.id.chat_bottom_sendbutton);
-		btnSendFileMessage = (ImageButton) findViewById(R.id.chat_bottom_sendfilebutton);
+		btnSendFile = (ImageButton) findViewById(R.id.chat_bottom_sendfilebutton);
 		editText = (EditText) findViewById(R.id.chat_bottom_edittext);
 		lvChatList = (ListView) findViewById(R.id.chat_list);
 
@@ -195,37 +203,11 @@ public class ChatActivity extends Activity implements OnClickListener {
 			}
 		});
 
-		btnSendFileMessage.setOnClickListener(new OnClickListener() {
+		btnSendFile.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				new Thread(new Runnable() {
-					@Override
-					public void run() {
-						sendFile(otherAccount, sendFilePath);
-						MessageDBOpenHelper DBHelper = new MessageDBOpenHelper(
-								ChatActivity.this, "sayi", null, 1);
-						SQLiteDatabase db = DBHelper.getWritableDatabase();
-						MessageDBManager MessageDBManager = new MessageDBManager();
-						String messageDate = GetNetWorkTime
-								.getWebsiteDatetime();
-						MessageEntity messageEntity = new MessageEntity(
-								otherAccount, account, "发送文件：" + sendFileName,
-								"readed", messageDate);
-						MessageDBManager.messageInsert(db, messageEntity);
-						db.close();
-						addInfoToList("发送文件：" + sendFileName, USER, messageDate);
-						/**
-						 * 更新数据列表，并且通过setSelection方法使ListView始终滚动在最底端
-						 */
-						handler.post(new Runnable() {
-							@Override
-							public void run() {
-								adapter.notifyDataSetChanged();
-								lvChatList.setSelection(chatList.size() - 1);
-							}
-						});
-					}
-				}).start();
+				File  file=new File(sendFilePath);
+				sendFile(otherAccount,file);
 			}
 		});
 
@@ -327,16 +309,45 @@ public class ChatActivity extends Activity implements OnClickListener {
 
 	}
 
-	public void sendFile(String to, String filepath) {
-		final OutgoingFileTransfer outgoingFileTransfer = fileTransferManager
-				.createOutgoingFileTransfer(to + "@" + connect.getServiceName()
-						+ "/Spark 2.8.3.960");
-		File insfile = new File(filepath);
-		try {
-			outgoingFileTransfer.sendFile(insfile, "descr");
-		} catch (XMPPException e) {
-			e.printStackTrace();
-		}
+	public void sendFile(final String to, final File file) {
+		
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				final OutgoingFileTransfer outgoingFileTransfer = fileTransferManager
+						.createOutgoingFileTransfer(to + "@" + connect.getServiceName()
+								+ "/Spark 2.8.3.960");
+				try {
+					outgoingFileTransfer.sendFile(file, "descr");
+				} catch (XMPPException e) {
+					e.printStackTrace();
+				}
+				
+				MessageDBOpenHelper DBHelper = new MessageDBOpenHelper(
+						ChatActivity.this, "sayi", null, 1);
+				SQLiteDatabase db = DBHelper.getWritableDatabase();
+				MessageDBManager MessageDBManager = new MessageDBManager();
+				String messageDate = GetNetWorkTime
+						.getWebsiteDatetime();
+				MessageEntity messageEntity = new MessageEntity(
+						otherAccount, account, "发送文件：" + sendFileName,
+						"readed", messageDate);
+				MessageDBManager.messageInsert(db, messageEntity);
+				db.close();
+				addInfoToList("发送文件：" + sendFileName, USER, messageDate);
+				/**
+				 * 更新数据列表，并且通过setSelection方法使ListView始终滚动在最底端
+				 */
+				handler.post(new Runnable() {
+					@Override
+					public void run() {
+						adapter.notifyDataSetChanged();
+						lvChatList.setSelection(chatList.size() - 1);
+					}
+				});
+			}
+		}).start();
+		
 	}
 
 	// new Thread(new Runnable() {
@@ -602,4 +613,8 @@ public class ChatActivity extends Activity implements OnClickListener {
 		}
 	}
 
+	
+	
+	
+	
 }

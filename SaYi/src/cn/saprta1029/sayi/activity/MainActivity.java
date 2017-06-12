@@ -14,6 +14,7 @@ import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ChatManagerListener;
 import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.Roster;
+import org.jivesoftware.smack.RosterEntry;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.provider.ProviderManager;
@@ -83,6 +84,8 @@ import cn.sparta1029.sayi.components.RequestListViewAdapter;
 import cn.sparta1029.sayi.components.TextViewWithImage;
 import cn.sparta1029.sayi.db.BlacklistDBManger;
 import cn.sparta1029.sayi.db.BlacklistDBOpenHelper;
+import cn.sparta1029.sayi.db.ContactRequestDBManager;
+import cn.sparta1029.sayi.db.ContactRequestDBOpenHelper;
 import cn.sparta1029.sayi.db.MessageDBManager;
 import cn.sparta1029.sayi.db.MessageDBOpenHelper;
 import cn.sparta1029.sayi.db.MessageEntity;
@@ -254,11 +257,8 @@ public class MainActivity extends Activity {
 			public void run() {
 				connect = XMPPConnectionUtil.getInstanceNotPresence()
 						.getConnection(serverAddress);
-				//TODO
-				ContactManager.addFriend("yuri",connect);
-				ContactManager.addFriend("cortana",connect);
-				Log.i("contacttest", "好友列表"+ContactManager.getFriend(connect).toString());
-				 IntentFilter filter = new IntentFilter();  
+
+				IntentFilter filter = new IntentFilter();  
 				        filter.addAction(ACTION_UPDATE);  
 				        broadcastReceiver = new UpdateBroadcastReceiver();  
 				        registerReceiver(broadcastReceiver, filter);  
@@ -329,7 +329,6 @@ public class MainActivity extends Activity {
 						org.jivesoftware.smack.packet.Message message) {
 					// 其形式如masterchief@sparta1029/Spark
 					// 2.8.3.960，需要进行切割，并且会接收到空值，需要处理
-					
 					String sender = message.getFrom().split("@")[0];
 					sender = sender.substring(sender.indexOf("/") + 1);
 					
@@ -395,10 +394,32 @@ public class MainActivity extends Activity {
 		  
 		        @Override  
 		        public void onReceive(Context context, Intent intent) {  
-		        	String request = intent.getStringExtra("request");
-		        	String contactAccount = intent.getStringExtra("account");
-		            itemListView.add(request+contactAccount);
-		            adapter.notifyDataSetChanged();
+		        	boolean isUpdate = intent.getBooleanExtra("update", false);
+		           if(isUpdate)
+		           {
+		        	   contactList.clear();
+		        	   requestList.clear();
+		        	   ArrayList<RosterEntry> contactAllNew = ContactManager.getFriend(connect);
+						for(int i=0;i<contactAllNew.size();i++)
+						{
+							contactList.add(contactAllNew.get(i).getUser().split("@")[0]);
+						}   
+			        	ContactRequestDBOpenHelper DBHelper = new ContactRequestDBOpenHelper(
+		            			MainActivity.this, "sayi", null, 1);
+		        		SQLiteDatabase db = DBHelper.getWritableDatabase();
+		        		ContactRequestDBManager contactDBManager = new ContactRequestDBManager();
+		        		ArrayList<HashMap<String, String>> requestAll = contactDBManager.contactRequestQuery(db, account);
+						for(int i=0;i<requestAll.size();i++)
+						{
+						HashMap<String,String> map=new HashMap<String,String>();
+						map.put("contactname", requestAll.get(i).get("contactname"));
+						map.put("request",requestAll.get(i).get("request"));
+						requestList.add(map);
+						}
+						db.close();
+		           }
+		            adapterRequest.notifyDataSetChanged();
+		            adapterContact.notifyDataSetChanged();
 		        }  
 		  
 		    }  
@@ -478,16 +499,145 @@ public class MainActivity extends Activity {
 	
 	class lvMainRequestItemClickListener implements OnItemClickListener {
 		@Override
-		public void onItemClick(AdapterView<?> parent, View view, int position,
+		public void onItemClick(AdapterView<?> parent, View view, final int position,
 				long id) {
-			Toast.makeText(MainActivity.this, "request"+position, Toast.LENGTH_SHORT).show();
+			ContactRequestDBOpenHelper DBHelper = new ContactRequestDBOpenHelper(
+        			MainActivity.this, "sayi", null, 1);
+    		final SQLiteDatabase db = DBHelper.getWritableDatabase();
+    		final ContactRequestDBManager contactDBManager = new ContactRequestDBManager();
+    		
+			if(!"对方发出好友申请".equals(requestList.get(position).get("request")))
+			{
+		contactDBManager.contactRequestDelete(db, account, requestList.get(position).get("contactname"));		
+    		handler.post(new Runnable() {
+     			@Override
+     			public void run() {
+     				requestList.remove(position);
+     				adapterRequest.notifyDataSetChanged();
+     				db.close();
+     	               }
+     		});
+		}else
+		{
+			final int Position=position;
+		 	final AlertDialog requestDialog = new AlertDialog.Builder(
+        			MainActivity.this).create();
+		 	requestDialog.setTitle("处理请求");
+		 	requestDialog
+					.setIcon(R.drawable.ic_launcher);
+		 	requestDialog
+					.setMessage("是否同意"+requestList.get(position).get("contactname")+"的好友请求");
+		 	requestDialog
+					.setButton(
+							DialogInterface.BUTTON_POSITIVE,
+							"是",
+							new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(
+										DialogInterface dialog,
+										int which) {
+									
+									ContactManager.addFriend(requestList.get(position).get("contactname"), connect);
+									contactDBManager.contactRequestDelete(db, account, requestList.get(position).get("contactname"));		
+									Intent intentBC = new Intent();  
+						           	intentBC.setAction(MainActivity.ACTION_UPDATE); 
+						           	intentBC.putExtra("update", true);  
+						            sendBroadcast(intentBC);         	
+								}
+							});
+		 	requestDialog
+					.setButton(
+							DialogInterface.BUTTON_NEGATIVE,
+							"否",
+							new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(
+										DialogInterface dialog,
+										int which) {
+									contactDBManager.contactRequestDelete(db, account, requestList.get(position).get("contactname"));		
+									Intent intentBC = new Intent();  
+						           	intentBC.setAction(MainActivity.ACTION_UPDATE); 
+						           	intentBC.putExtra("update", true);  
+						            sendBroadcast(intentBC);   
+								}
+							});
+		 	requestDialog.show();
+		}
+		
 		}
 	}
+	
+	
 	class lvMainContactItemClickListener implements OnItemClickListener {
 		@Override
 		public void onItemClick(AdapterView<?> parent, View view, int position,
 				long id) {
-			Toast.makeText(MainActivity.this, "request"+position, Toast.LENGTH_SHORT).show();
+			
+			final int Position=position;
+		 	final AlertDialog contactDialog = new AlertDialog.Builder(
+        			MainActivity.this).create();
+			contactDialog.setTitle("好友选择");
+			contactDialog
+					.setIcon(R.drawable.ic_launcher);
+			contactDialog
+					.setMessage("选中好友："+contactList.get(position));
+			contactDialog
+					.setButton(
+							DialogInterface.BUTTON_POSITIVE,
+							"进入聊天",
+							new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(
+										DialogInterface dialog,
+										int which) {
+									Intent intent = new Intent(MainActivity.this,
+											ChatActivity.class);
+									intent.putExtra("otherAccount",contactList.get(Position));
+									startActivity(intent);
+									chatManager.removeChatListener(
+											chatManagerListener);
+									finish();
+								}
+							});
+			contactDialog
+					.setButton(
+							DialogInterface.BUTTON_NEGATIVE,
+							"删除好友",
+							new DialogInterface.OnClickListener() {
+								@Override
+								public void onClick(
+										DialogInterface dialog,
+										int which) {
+									ContactManager.removeFriend(contactList.get(Position), connect);
+									contactList.remove(Position);
+									adapterContact.notifyDataSetChanged();
+								}
+							});
+			contactDialog.setButton(DialogInterface.BUTTON_NEUTRAL, 
+					"取消", new DialogInterface.OnClickListener() {
+						@Override
+						public void onClick(
+								DialogInterface dialog,
+								int which) {
+							contactDialog
+									.dismiss();
+						}
+					});
+			contactDialog.show();
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
 		}
 	}
 	public void initDrawerListViewData() {
@@ -518,7 +668,7 @@ public class MainActivity extends Activity {
 		listViews.add(mInflater.inflate(R.layout.main_chatroom, null));
 		mPager.setAdapter(new MyPagerAdapter(listViews));
 		mPager.setCurrentItem(0);
-		mPager.addOnPageChangeListener(new MyOnPageChangeListener());
+		mPager.setOnPageChangeListener(new MyOnPageChangeListener());
 	}
 	/**
 	 * 初始化动画
@@ -588,35 +738,10 @@ public class MainActivity extends Activity {
 				lvMainFriend.setAdapter(adapterFriendList);
 				lvMainFriend
 						.setOnItemClickListener(new lvMainFriendItemClickListener());
-				Button btnSearch = (Button) mListViews.get(arg1).findViewById(
-						R.id.main_friend_search);
 				Button btnConfirm = (Button) mListViews.get(arg1).findViewById(
 						R.id.friend_chat);
 				final EditText etFriendAccount = (EditText) mListViews
 						.get(arg1).findViewById(R.id.friend_account);
-				btnSearch.setOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View view) {
-						if (etFriendAccount.getText() == null
-								|| "".equals(etFriendAccount.getText()
-										.toString()))
-							Toast.makeText(MainActivity.this, "请输入要查找的用户名",
-									Toast.LENGTH_SHORT).show();
-						else if(IsInBlacklist.isInBlacklist(blacklistAccountList,etFriendAccount.getText().toString().trim()))
-						{
-							Toast.makeText(MainActivity.this, "该用户已在黑名单中",
-									Toast.LENGTH_SHORT).show();
-						}
-						else {
-							Intent intent = new Intent(MainActivity.this,
-									FriendSearchActivity.class);
-							intent.putExtra("account", etFriendAccount
-									.getText().toString());
-							startActivity(intent);
-							finish();
-						}
-					}
-				});
 				btnConfirm.setOnClickListener(new View.OnClickListener() {
 					@Override
 					public void onClick(View view) {
@@ -810,14 +935,25 @@ public class MainActivity extends Activity {
 				//联系人子页面
 				requestList=new ArrayList<HashMap<String,String>>();
 				contactList=new ArrayList<String>();
-				for(int i=0;i<5;i++)
+				ArrayList<RosterEntry> contactAll = ContactManager.getFriend(connect);
+				for(int i=0;i<contactAll.size();i++)
 				{
-					HashMap<String,String> map=new HashMap<String,String>();
-					map.put("contactname", ""+i);
-					map.put("request", ""+i+5);
-					requestList.add(map);
-					contactList.add(""+i+100);
+					contactList.add(contactAll.get(i).getUser().split("@")[0]);
 				}
+				
+				ContactRequestDBOpenHelper DBHelper = new ContactRequestDBOpenHelper(
+            			MainActivity.this, "sayi", null, 1);
+        		SQLiteDatabase db = DBHelper.getWritableDatabase();
+        		ContactRequestDBManager contactDBManager = new ContactRequestDBManager();
+        		ArrayList<HashMap<String, String>> requestAll = contactDBManager.contactRequestQuery(db, account);
+				for(int i=0;i<requestAll.size();i++)
+				{
+				HashMap<String,String> map=new HashMap<String,String>();
+				map.put("contactname", requestAll.get(i).get("contactname"));
+				map.put("request",requestAll.get(i).get("request"));
+				requestList.add(map);
+				}
+				db.close();
 				adapterRequest = new RequestListViewAdapter(MainActivity.this,requestList);
 				lvMainRequest = (ListView) mListViews.get(arg1).findViewById(
 						R.id.main_contact_request_list);
@@ -957,16 +1093,8 @@ public class MainActivity extends Activity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		setIconEnable(menu, true);
 		// TODO 右上角菜单
+		menu.add(Menu.NONE,0, 0, "添加好友").setIcon(R.drawable.add_contact); 
 		return super.onCreateOptionsMenu(menu);
-	}
-	public static boolean addUser(Roster roster, String userName, String name) {
-		try {
-			roster.createEntry(userName + "@10.101.146.187", name, null);
-			return true;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-		}
 	}
 	// TODO
 	public int isChatroomExist(String chatroomName) {
@@ -1032,19 +1160,10 @@ public class MainActivity extends Activity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-		case 1:
-			break;
-		case 5:
-			break;
-		case android.R.id.home:
-			if (drawerOpen == false) {
-				drawerLayout.openDrawer(Gravity.START);
-				drawerOpen = true;
-			} else {
-				drawerLayout.closeDrawers();
-				;
-				drawerOpen = false;
-			}
+		case 0:
+Intent addContactIntent=new Intent(this,AddContactActivity.class);
+startActivity(addContactIntent);
+finish();
 			break;
 		}
 		return super.onOptionsItemSelected(item);
@@ -1069,7 +1188,6 @@ public class MainActivity extends Activity {
 				drawerOpen = true;
 			} else {
 				drawerLayout.closeDrawers();
-				;
 				drawerOpen = false;
 			}
 			return true;

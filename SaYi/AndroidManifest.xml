@@ -100,7 +100,10 @@
             android:name=".activity.ForgetPasswordActivity"
             android:theme="@style/AppTheme">
         </activity>
-         
+         <activity
+            android:name=".activity.AddContactActivity"
+            android:theme="@style/AppTheme">
+        </activity>
         <service
             android:name="com.baidu.location.f"
             android:enabled="true"
