@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+  <RelativeLayout 
+    android:layout_width="match_parent"
+    android:layout_height="50dp"
+    android:layout_gravity="center_horizontal" 
+    android:layout_marginTop="20dp"
+        android:background="#FFFFFF">
+     <EditText 
+        android:id="@+id/profile_blacklist_search_account"
+        android:layout_height="40dp"
+        android:layout_width="200dp"
+        android:hint="查找/新增黑名单用户" 
+        android:layout_marginStart="20dp"
+        android:textColor="#000000"/>
+       <Button 
+        android:id="@+id/profile_blacklist_search"
+        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:text="查  找"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/button_blue_bg"
+        android:textColor="#FFFFFF"/>
+      </RelativeLayout>
+      <Button 
+        android:id="@+id/profile_blacklist_add"
+        android:layout_height="40dp"
+        android:layout_width="match_parent"
+        android:layout_marginStart="50dp"
+        android:layout_marginEnd="50dp"
+        android:text="增加黑名单"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/button_blue_bg"
+        android:textColor="#FFFFFF"/>
+      <ListView
+          android:id="@+id/profile_blacklist_search_result"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:layout_marginTop="30dp"
+          android:layout_marginStart="20dp"
+          android:layout_marginEnd="20dp"
+          android:layout_weight="1"
+          android:textColor="#FFFFFF" 
+          />
+
+<RelativeLayout 
+        android:id="@+id/profile_longclick_layout"
+        android:layout_width="fill_parent"
+        android:layout_height="50dp"
+        android:gravity="bottom"
+        android:background="#3399FF"
+        android:visibility="gone"
+        >
+        <Button 
+            
+            android:id="@+id/blacklist_cancle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="撤销    |"
+            android:textSize="20sp"
+            android:background="@null"
+            android:layout_centerVertical="true"
+            
+            />
+        <TextView 
+            
+            android:id="@+id/blacklist_textcount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="共计"
+            android:textSize="15sp"
+            android:layout_centerInParent="true"
+            
+            />
+        
+        <Button 
+            
+            android:id="@+id/blacklist_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="|  删除"
+            android:textSize="20sp"
+            android:background="@null"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            />
+    </RelativeLayout>
+</LinearLayout>

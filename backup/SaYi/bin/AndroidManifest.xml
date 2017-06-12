@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="cn.saprta1029.sayi"
+    android:versionCode="1"
+    android:versionName="1.0" >
+<uses-permission android:name="android.permission.INTERNET"/>
+
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION">
+    </uses-permission>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION">
+    </uses-permission>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE">
+    </uses-permission>
+
+  <uses-permission android:name="android.permission.GET_ACCOUNTS" />  
+    <uses-permission android:name="android.permission.USE_CREDENTIALS" />  
+    <uses-permission android:name="android.permission.MANAGE_ACCOUNTS" />  
+    <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" />  
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />  
+    <uses-permission android:name="android.permission.INTERNET" />  
+    <uses-permission android:name="com.android.launcher.permission.READ_SETTINGS" />  
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />  
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />  
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />  
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />  
+    <uses-permission android:name="android.permission.BROADCAST_STICKY" />  
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />  
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />  
+
+    <uses-sdk
+        android:minSdkVersion="18"
+        android:targetSdkVersion="19" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name">
+        
+        <meta-data
+            android:name="com.baidu.lbsapi.API_KEY"
+            android:value="rvgdLSHGZiwEI89YfS0KqpGFXNs2MNpt"/>
+        
+         <activity
+            android:name=".activity.WelcomeActivity"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+              <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+           </activity>
+    <activity
+            android:name=".activity.LoginActivity"
+            android:theme="@style/AppTheme"
+            android:windowSoftInputMode="adjustPan"
+            android:label="@string/app_name" 
+            android:screenOrientation="portrait">
+        </activity>
+        
+        <activity
+            android:name=".activity.MainActivity"
+            android:theme="@style/PlusOverflowHoloTheme">
+        </activity>
+        <activity
+            android:name=".activity.RegisterActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.ChatActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.ChatroomActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.InfoFriendActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.InfoChatroomActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+         <activity
+            android:name=".activity.SettingActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.FriendSearchActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.ChatroomSearchActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.ProfileActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name=".activity.ForgetPasswordActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+         
+        <service
+            android:name="com.baidu.location.f"
+            android:enabled="true"
+            android:process=":remote"></service>
+    
+    </application>
+
+</manifest>

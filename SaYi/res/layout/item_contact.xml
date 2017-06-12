@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:orientation="horizontal"
+    android:layout_height="50dp"
+    android:background="@drawable/item_contact_listview_bg" >
+    <TextView
+       android:layout_width="wrap_content"
+       android:layout_height="match_parent"
+        android:layout_marginStart="20dp"
+        android:textColor="#000000"
+        android:text="用户名："
+        android:textSize="17sp"
+        android:gravity="center_vertical"
+        android:drawableStart="@drawable/item_main_account"/>
+<TextView
+       android:id="@+id/item_contact_account"
+       android:layout_width="wrap_content"
+       android:layout_height="match_parent"
+        android:textColor="#000000"
+        android:text="联系人名"
+        android:textSize="17sp"
+        android:gravity="center_vertical"/>
+</LinearLayout>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#f0f0f0" 
+    android:paddingEnd="10dip"
+    android:paddingStart="10dip"
+    android:paddingBottom="10dip"
+    android:paddingTop="10dip">
+     
+    <TextView 
+        android:id="@+id/chatroomlist_other"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="5dip"
+        android:layout_alignParentStart="true"/>
+      <TextView   
+        android:id="@+id/other_colon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/chatroomlist_other"
+        android:text="@string/colon"    />
+      
+    <TextView   
+        android:id="@+id/chatroomlist_text_other"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/other_colon"/>
+    
+    
+    
+
+</RelativeLayout>

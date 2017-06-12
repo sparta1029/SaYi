@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical" 
+        android:background="#FFFFFF">
+  <RelativeLayout 
+    android:layout_width="match_parent"
+    android:layout_height="50dp"
+    android:layout_gravity="center_horizontal" 
+    android:layout_marginTop="20dp"
+        android:background="#FFFFFF">
+     <EditText 
+        android:id="@+id/friend_search_account"
+        android:layout_height="40dp"
+        android:layout_width="150dp"
+        android:hint="输入查找用户名" 
+        android:layout_marginStart="40dp"
+        android:textColor="#000000"/>
+       <Button 
+        android:id="@+id/friend_search"
+        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:text="查  找"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="40dp"
+        android:background="@drawable/button_blue_bg"
+        android:textColor="#FFFFFF"/>
+      </RelativeLayout>
+      <ListView 
+        android:id="@+id/friend_search_result"
+        android:layout_height="fill_parent"
+        android:layout_width="match_parent"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:textColor="#FFFFFF"/>
+</LinearLayout>
